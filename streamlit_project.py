@@ -12,9 +12,6 @@ from mplsoccer import VerticalPitch
 from streamlit_option_menu import option_menu
 from matplotlib.colors import Normalize
 from matplotlib.colors import PowerNorm
-from tqdm import tqdm
-import altair as alt
-import textwrap
 
 
 played_matches_threshold = 10
