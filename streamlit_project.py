@@ -6,12 +6,19 @@ from matplotlib.colors import LinearSegmentedColormap
 import unicodedata
 from unidecode import unidecode
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn import preprocessing
+from sklearn.decomposition import PCA
 from mplsoccer import VerticalPitch
 from streamlit_option_menu import option_menu
 from matplotlib.colors import Normalize
 from matplotlib.colors import PowerNorm
+from tqdm import tqdm
+import altair as alt
+import textwrap
+
 
 played_matches_threshold = 10
+minutes_threshold = 1000
 
 st.set_page_config(layout="wide")
 
@@ -737,6 +744,438 @@ def show_combined(player_name, filename, num_x_cells=5, num_y_cells=5, top=20):
                 with st.expander("Compare players"):
                     compare_players(player_name_hea, row['player_name'], filename=filename, num_x_cells_tou=num_x_cells, num_y_cells_tou=num_y_cells, top=top, expander=True)
 
+def standardize_df(df, sofa_under=False, minutes=1000):
+    if sofa_under:
+        df = df.loc[df['position'] != 'GK']
+        df = df.loc[df['minutes'] >= 1000]
+    else:
+        df = df.loc[df['minutes'] >= minutes]
+        df = df.loc[(df['pos'] != 'GK') & (df['pos'] != 'GK S')]
+        df = df.dropna(subset=['pos'])
+    df = df.reset_index(drop=True)
+    scaler = preprocessing.StandardScaler()
+    if sofa_under:
+        data_df = df.drop(columns=['player', 'league', 'team', 'position', 'games', 'minutes', 'nineties', 'player_team'])
+    else:
+        data_df = df.drop(columns=['player', 'player_norm', 'team', 'pos', 'minutes', 'ninety_s', 'games'])
+    standard_df = scaler.fit_transform(data_df)
+    standard_df = pd.DataFrame(standard_df, columns=data_df.columns)
+    if sofa_under:
+        standard_df.insert(0, 'player', df['player'])
+        standard_df.insert(0, 'league', df['league'])
+        standard_df.insert(2, 'team', df['team'])
+        standard_df.insert(3, 'position', df['position'])
+        standard_df.insert(4, 'games', df['games'])
+        standard_df.insert(5, 'minutes', df['minutes'])
+        standard_df.insert(6, 'nineties', df['nineties'])
+    else:
+        standard_df.insert(0, 'player', df['player'])
+        standard_df.insert(0, 'player_norm', df['player_norm'])
+        standard_df.insert(2, 'team', df['team'])
+        standard_df.insert(3, 'pos', df['pos'])
+        standard_df.insert(4, 'minutes', df['minutes'])
+        standard_df.insert(5, 'ninety_s', df['ninety_s'])
+        standard_df.insert(6, 'games', df['games'])
+    return standard_df
+
+def apply_pca(df_standard, sofa_under=False):
+    if sofa_under:
+        df_pca = df_standard.drop(columns=['player', 'league', 'team', 'position', 'games', 'minutes', 'nineties'])
+    else:
+        df_pca = df_standard.drop(columns=['player', 'player_norm', 'team', 'pos', 'minutes', 'ninety_s', 'games'])
+    pca = PCA(n_components=7)
+    data_pca = pca.fit_transform(df_pca)
+    data_pca = pd.DataFrame(data_pca)
+    if sofa_under:
+        data_pca.insert(0, 'player', df_standard['player'])
+        data_pca.insert(1, 'league', df_standard['league'])
+        data_pca.insert(2, 'team', df_standard['team'])
+        data_pca.insert(3, 'position', df_standard['position'])
+        data_pca.insert(4, 'games', df_standard['games'])
+        data_pca.insert(5, 'minutes', df_standard['minutes'])
+        data_pca.insert(6, 'nineties', df_standard['nineties'])
+    else:
+        data_pca.insert(0, 'player', df_standard['player'])
+        data_pca.insert(1, 'player_norm', df_standard['player_norm'])
+        data_pca.insert(2, 'team', df_standard['team'])
+        data_pca.insert(3, 'pos', df_standard['pos'])
+        data_pca.insert(4, 'minutes', df_standard['minutes'])
+        data_pca.insert(5, 'ninety_s', df_standard['ninety_s'])
+        data_pca.insert(6, 'games', df_standard['games'])
+
+    cont_df = pd.DataFrame()
+    feature_names = df_pca.columns
+    cont0 = []
+    cont1 = []
+    cont2 = []
+    cont3 = []
+    cont4 = []
+    cont5 = []
+    cont6 = []
+    loadings = pca.components_.T * np.sqrt(pca.explained_variance_)
+    for i in range(len(feature_names)):
+        # print(f"Feature: {feature_names[i]}, Loadings: {loadings[i]}")
+        cont0.append(loadings[i][0])
+        cont1.append(loadings[i][1])
+        cont2.append(loadings[i][2])
+        cont3.append(loadings[i][3])
+        cont4.append(loadings[i][4])
+        cont5.append(loadings[i][5])
+        cont6.append(loadings[i][6])
+    cont_df['feature'] = feature_names
+    cont_df['cont_0'] = cont0
+    cont_df['cont_1'] = cont1
+    cont_df['cont_2'] = cont2
+    cont_df['cont_3'] = cont3
+    cont_df['cont_4'] = cont4
+    cont_df['cont_5'] = cont5
+    cont_df['cont_6'] = cont6
+    # print(f"PCA Explained Variance: {pca.explained_variance_ratio_}")
+    # print(f"PCA Explained Variance Sum: {pca.explained_variance_ratio_.sum():.2%}")
+
+
+    loading_matrix = pd.DataFrame(
+        pca.components_.T,
+        index=feature_names,
+        columns=[
+            'PC1', 'PC2', 'PC3',
+            'PC4', 'PC5', 'PC6', 'PC7'
+        ]
+    )
+
+    loading_matrix['loading_strength'] = np.sqrt(
+        (loading_matrix ** 2).sum(axis=1)
+    )
+
+    loading_matrix.sort_values(
+        'loading_strength',
+        ascending=False
+    )
+    return data_pca, cont_df, loading_matrix
+
+def get_distances(player_name, df_pca, sofa_under=False):
+    
+    if sofa_under:
+        df_pca['player'] = df_pca['player'].apply(unidecode)
+        search_row = df_pca.loc[df_pca['player'] == player_name]
+    else:
+        search_row = df_pca.loc[df_pca['player_norm'] == player_name]
+    dist_df = pd.DataFrame()
+    players = []
+    distances = []
+    cos_sims = []
+    teams = []
+    positions = []
+
+    
+
+    # for i in tqdm(df_pca.index, "Computing distances"):
+    for i in df_pca.index:
+        compare_row = df_pca.loc[i]
+        if sofa_under:
+            search_player = search_row['player']
+            compare_player = compare_row['player']
+            compare_team = compare_row['team']
+            compare_pos = compare_row['position']
+        else:
+            search_player = search_row['player_norm']
+            compare_player = compare_row['player_norm']
+            compare_team = compare_row['team']
+            compare_pos = compare_row['pos']
+        search_data = search_row[[0, 1, 2, 3, 4, 5, 6]].to_numpy(dtype=float)
+        compare_data = compare_row[[0, 1, 2, 3, 4, 5, 6]].to_numpy(dtype=float)
+        distance = np.linalg.norm(search_data - compare_data)
+        cos_sim = cosine_similarity(search_data.reshape(1, -1), compare_data.reshape(1, -1))[0][0]
+        # print(f"Distance between {search_player} and {compare_player}: {distance}")
+        players.append(compare_player)
+        distances.append(distance)
+        cos_sims.append(cos_sim)
+        teams.append(compare_team)
+        positions.append(compare_pos)
+
+    
+    
+    dist_df['player'] = players
+    dist_df['team'] = teams
+    dist_df['position'] = positions
+    dist_df['distance'] = distances
+    dist_df['cosine_similarity'] = cos_sims
+    dist_df = dist_df.sort_values(by=['distance'], ascending=True)
+    dist_df = dist_df.reset_index(drop=True)
+    dist_df['rank_distance'] = dist_df['distance'].rank(method='min')
+    dist_df['rank_cosine_similarity'] = dist_df['cosine_similarity'].rank(ascending=False, method='min')
+    dist_df['rank_distance'] = dist_df['rank_distance'].astype(int)
+    dist_df['rank_cosine_similarity'] = dist_df['rank_cosine_similarity'].astype(int)
+
+    if sofa_under==True:
+        search_pos = search_row['position'].iloc[0]
+        # print(search_pos, type(search_pos))
+        dist_df_pos = dist_df.loc[dist_df['position'] == search_pos]
+        dist_df_pos['rank_distance'] = dist_df_pos['distance'].rank(method='min')
+        dist_df_pos['rank_cosine_similarity'] = dist_df_pos['cosine_similarity'].rank(ascending=False, method='min')
+        dist_df_pos['rank_distance'] = dist_df_pos['rank_distance'].astype(int)
+        dist_df_pos['rank_cosine_similarity'] = dist_df_pos['rank_cosine_similarity'].astype(int)
+        return dist_df, dist_df_pos
+
+    return dist_df
+
+def show_43to7(df, player_team):
+
+    descriptions = {
+        'aerials_won_pct': 'Aerial Duels Won %',
+        'attempt_assists_per90': 'Assist Attempts (Per90)',
+        'avg_shot_distance': 'Average Shot Distance',
+        'ball_recoveries_per90': 'Ball Recoveries (Per90)',
+        'big_chances_created_per90': 'Big Chances Created (Per90)',
+        'big_chances_missed_per90': 'Big Chances Missed (Per90)',
+        'blocked_shots_per90': 'Blocked Shots (Per90)',
+        'chipped_passes_pct': 'Chipped Passes %',
+        'chipped_passes_per90': 'Chipped Passes (Per90)',
+        'clearances_per90': 'Clearances (Per90)',
+        'crosses_pct': 'Accurate Crosses %',
+        'crosses_per90': 'Attempted Crosses (Per90)',
+        'dispossessed_per90': 'Dispossessed (Per90)',
+        'dribbled_past_per90': 'Dribbled Past (Per90)',
+        'dribbles_pct': 'Successful Dribbles %',
+        'dribbles_per90': 'Attempted Dribbles (Per90)',
+        'fouled_per90': 'Fouls Received (Per90)',
+        'fouls_per90': 'Fouls Committed (Per90)',
+        'goal_conversion_pct': 'Goal Conversion %',
+        'ground_duels_won_pct': 'Ground Duels Won %',
+        'interceptions_per90': 'Interceptions (Per90)',
+        'key_passes_per90': 'Key Passes (Per90)',
+        'kilometers_per90': 'Kilometers Covered (Per90)',
+        'long_balls_pct': 'Accurate Long Balls %',
+        'long_balls_per90': 'Attempted Long Balls (Per90)',
+        'npxG_per90': 'npxG (Per90)',
+        'npxG_per_shot': 'npxG per Shot',
+        'pass_completion_pct': 'Pass Completion %',
+        'pass_final_third_per90': 'Passes in the Final Third (Per90)',
+        'passes_per90': 'Attempted Passes (Per90)',
+        'possession_lost_per90': 'Lost Possessions (Per90)',
+        'possession_won_att_third_per90': 'Possessions Won in the Attacking Third (Per90)',
+        'shots_inside_box_per90': 'Shots Inside the Box (Per90)',
+        'shots_on_target_pct': 'Shots on Target %',
+        'shots_on_target_per90': 'Shots on Target (Per90)',
+        'shots_outside_box_per90': 'Shots Outside the Box (Per90)',
+        'shots_per90': 'Attempted Shots (Per90)',
+        'sprints_per90': 'Sprints (Per90)',
+        'tackles_per90': 'Tackles (Per90)',
+        'touches_per90': 'Touches (Per90)',
+        'xA_per90': 'Expected Assists (Per90)',
+        'xGBuildup_per90': 'xGBuildup (Per90)',
+        'xGChain_per90': 'xGChain (Per90)'
+    }
+
+    def show_metric_html(metric, l_value, r_value, l_name, r_name):
+
+        max_value = max(abs(l_value), abs(r_value))
+
+        if max_value == 0:
+            l_width = 0
+            r_width = 0
+        else:
+            l_width = abs(l_value) / max_value * 100
+            r_width = abs(r_value) / max_value * 100
+
+        html_block = (
+            '<div style="'
+            'background-color:#181B24; '
+            'border-radius:12px; '
+            'padding:16px; '
+            'margin-bottom:16px; '
+            'font-family:Arial,sans-serif;'
+            '">'
+
+                # METRICA
+                f'<div style="'
+                f'color:white; '
+                f'font-size:15px; '
+                f'font-weight:bold; '
+                f'margin-bottom:12px;'
+                f'">'
+                    f'{metric}'
+                f'</div>'
+
+                # PLAYER 1
+                '<div style="display:flex; align-items:center; margin-bottom:8px;">'
+
+                    f'<div style="'
+                    f'width:130px; '
+                    f'min-width:130px; '
+                    f'color:white; '
+                    f'font-size:12px; '
+                    f'font-weight:bold; '
+                    f'padding-right:8px; '
+                    f'white-space:nowrap; '
+                    f'overflow:hidden; '
+                    f'text-overflow:ellipsis;'
+                    f'">'
+                        f'{l_name}'
+                    f'</div>'
+
+                    '<div style="'
+                    'flex:1; '
+                    'height:28px; '
+                    'background-color:#292D38; '
+                    'border-radius:6px; '
+                    'overflow:hidden;'
+                    '">'
+
+                        f'<div style="'
+                        f'width:{l_width:.1f}%; '
+                        f'height:28px; '
+                        f'background-color:#6366F1; '
+                        f'color:white; '
+                        f'display:flex; '
+                        f'align-items:center; '
+                        f'justify-content:flex-end; '
+                        f'padding-right:8px; '
+                        f'box-sizing:border-box; '
+                        f'font-size:11px; '
+                        f'font-weight:bold;'
+                        f'">'
+                            f'{l_value:.3f}'
+                        f'</div>'
+
+                    '</div>'
+
+                '</div>'
+
+                # PLAYER 2
+                '<div style="display:flex; align-items:center;">'
+
+                    f'<div style="'
+                    f'width:130px; '
+                    f'min-width:130px; '
+                    f'color:white; '
+                    f'font-size:12px; '
+                    f'font-weight:bold; '
+                    f'padding-right:8px; '
+                    f'white-space:nowrap; '
+                    f'overflow:hidden; '
+                    f'text-overflow:ellipsis;'
+                    f'">'
+                        f'{r_name}'
+                    f'</div>'
+
+                    '<div style="'
+                    'flex:1; '
+                    'height:28px; '
+                    'background-color:#292D38; '
+                    'border-radius:6px; '
+                    'overflow:hidden;'
+                    '">'
+
+                        f'<div style="'
+                        f'width:{r_width:.1f}%; '
+                        f'height:28px; '
+                        f'background-color:#14B8A6; '
+                        f'color:white; '
+                        f'display:flex; '
+                        f'align-items:center; '
+                        f'justify-content:flex-end; '
+                        f'padding-right:8px; '
+                        f'box-sizing:border-box; '
+                        f'font-size:11px; '
+                        f'font-weight:bold;'
+                        f'">'
+                            f'{r_value:.3f}'
+                        f'</div>'
+
+                    '</div>'
+
+                '</div>'
+
+            '</div>'
+        )
+
+        return html_block
+
+    player_name = str.split(player_team, ' - ')[0]
+    team = str.split(player_team, ' - ')[1]
+    player_row = df.loc[(df['player'] == player_name) & (df['team'] == team)]
+    # st.write(player_row)
+    df_standard = standardize_df(df, sofa_under=True, minutes=1000)
+    df_pca, cont_df, loadings = apply_pca(df_standard, sofa_under=True)
+    sim_df, sim_df_pos = get_distances(player_name, df_pca, sofa_under=True)
+    sim_df_pos = sim_df_pos.reset_index(drop=True)
+    # st.write(sim_df_pos)
+
+    l_player_name = sim_df_pos.loc[0]['player']
+    l_player_team = sim_df_pos.loc[0]['team']
+    l_player_row = df_standard.loc[(df_standard['player'] == l_player_name) & (df_standard['team'] == l_player_team)]
+    # st.write(l_player_row)
+    l_player_row = l_player_row.drop(columns=['league', 'player', 'team', 'position', 'games', 'minutes', 'nineties'])
+    l_player_row = l_player_row.reset_index(drop=True)
+
+    r_player_name = sim_df_pos.loc[1]['player']
+    r_player_team = sim_df_pos.loc[1]['team']
+    r_player_row = df_standard.loc[(df_standard['player'] == r_player_name) & (df_standard['team'] == r_player_team)]
+    # st.write(r_player_row)
+    r_player_row = r_player_row.drop(columns=['league', 'player', 'team', 'position', 'games', 'minutes', 'nineties'])
+    r_player_row = r_player_row.reset_index(drop=True)
+
+    diff = np.abs(l_player_row - r_player_row)
+    # st.write(diff)
+    top10 = diff.iloc[0].sort_values().head(10)
+    # st.write(top10)
+
+    top10_metrics = top10.index.tolist()
+
+    
+
+    # st.write(top10_metrics)
+    l_row = df.loc[(df['player'] == l_player_name) & (df['team'] == l_player_team)]
+    r_row = df.loc[(df['player'] == r_player_name) & (df['team'] == r_player_team)]
+    # st.write(l_row['player'].iloc[0], r_row['player'].iloc[0])
+    # for metric in top10_metrics:
+    #     l_value = round(l_row[metric].iloc[0], 3)
+    #     r_value = round(r_row[metric].iloc[0], 3)
+    #     st.write(metric, l_value, r_value)
+
+    metrics_html = []
+
+    for metric in top10_metrics:
+
+        l_value = float(l_row[metric].iloc[0])
+        r_value = float(r_row[metric].iloc[0])
+
+        metrics_html.append(
+            show_metric_html(
+                descriptions[metric],
+                l_value,
+                r_value,
+                l_player_name,
+                r_player_name
+            )
+        )
+
+
+    # GRIGLIA 2 x 5
+    grid_html = (
+        '<div style="'
+        'display:grid; '
+        'grid-template-columns:1fr 1fr; '
+        'gap:16px; '
+        'width:100%;'
+        '">'
+    )
+
+    for card in metrics_html:
+        grid_html += card
+
+    grid_html += '</div>'
+
+    st.markdown(grid_html, unsafe_allow_html=True)
+    
+    
+    
+    
+
+    
+    
+    
 
 st.title("Player Similarity")
 st.subheader("Search for a player in order to find the most similar players!")
@@ -744,20 +1183,29 @@ st.write("Last Update: August 18th, 2026")
 
 st.info(f"This project runs a similarity algorithm, based on player heatmaps and touches. Note therefore that the similarity is based only on player and ball movement.  \nData are taken from the 2025/26 season of the top 5 European Leagues (England, Spain, Italy, Germany, France).   \nComparisons are made between players with at least {played_matches_threshold} matches played during the season in the domestic league.")
 
-df = pd.read_pickle('grids/top5_2526_30_30.pkl')
+# df = pd.read_pickle('grids/top5_2526_30_30.pkl')
 # df = pd.read_pickle('grids/bpl_2526_30_30.pkl')
-df = df.loc[df['played_matches'] >= played_matches_threshold]
-df = df.sort_values(by=['player_name'])
-df["player_name"] = df["player_name"].apply(unidecode)
+# df = df.loc[df['played_matches'] >= played_matches_threshold]
+# df = df.sort_values(by=['player_name'])
+# df["player_name"] = df["player_name"].apply(unidecode)
 
+
+df = pd.read_csv('43to7/stats_sofa_under.csv')
+df = df.loc[df['position'] != 'GK']
+df = df.loc[df['minutes'] >= minutes_threshold]
+df['player'] = df['player'].apply(unidecode)
+df['player_team'] = df['player'] + ' - ' + df['team']
+df = df.sort_values(by=['player_team'])
 
 
 # df['description'] = df['player_name'] + " - " + df['team']
 
 # st.write(df)
+
 player_name = st.selectbox(
     "Search for a Player",
-    options=df['player_name'],
+    # options=df['player_name'],
+    options=df['player_team'],
     index=None,
     placeholder="Type a Player Name"
 )
@@ -768,10 +1216,12 @@ if player_name:
     # player_name = player_string[0]
     # player_team = player_string[1]
     # st.write(player_name)
-    sim_choice = option_menu(None, ['Heatmap Similarity', 'Movement Similarity', 'Combined Similarity', 'Compare Players'],icons=['1-circle', '2-circle', '3-circle', '4-circle'], 
+    sim_choice = option_menu(None, ['43to7', 'Heatmap Similarity', 'Combined Similarity', 'Compare Players'],icons=['1-circle', '2-circle', '3-circle', '4-circle'], 
         default_index=0, orientation="horizontal")
 
-    if sim_choice == 'Heatmap Similarity':
+    if sim_choice == "43to7":
+        show_43to7(df, player_name)
+    elif sim_choice == 'Heatmap Similarity':
         show_heatmaps(player_name=player_name, filename='top5_2526')
     elif sim_choice == 'Movement Similarity':
         wide_movements = st.checkbox('Wider Movements')
