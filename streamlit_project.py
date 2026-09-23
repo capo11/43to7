@@ -1139,7 +1139,7 @@ def show_43to7(df, player_team):
 
         st.markdown(
             show_metric_html(
-                metric,
+                descriptions[metric],
                 l_value,
                 r_value,
                 l_player_name,
