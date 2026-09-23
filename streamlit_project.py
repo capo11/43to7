@@ -1115,10 +1115,10 @@ def show_43to7(df, player_team):
 
     diff = np.abs(l_player_row - r_player_row)
     # st.write(diff)
-    top10 = diff.iloc[0].sort_values().head(10)
+    top5 = diff.iloc[0].sort_values().head(5)
     # st.write(top10)
 
-    top10_metrics = top10.index.tolist()
+    top5_metrics = top5.index.tolist()
 
     
 
@@ -1131,40 +1131,22 @@ def show_43to7(df, player_team):
     #     r_value = round(r_row[metric].iloc[0], 3)
     #     st.write(metric, l_value, r_value)
 
-    metrics_html = []
 
-    for metric in top10_metrics:
+    for metric in top5_metrics:
 
         l_value = float(l_row[metric].iloc[0])
         r_value = float(r_row[metric].iloc[0])
 
-        metrics_html.append(
+        st.markdown(
             show_metric_html(
-                descriptions[metric],
+                metric,
                 l_value,
                 r_value,
                 l_player_name,
                 r_player_name
-            )
+            ),
+            unsafe_allow_html=True
         )
-
-
-    # GRIGLIA 2 x 5
-    grid_html = (
-        '<div style="'
-        'display:grid; '
-        'grid-template-columns:1fr 1fr; '
-        'gap:16px; '
-        'width:100%;'
-        '">'
-    )
-
-    for card in metrics_html:
-        grid_html += card
-
-    grid_html += '</div>'
-
-    st.markdown(grid_html, unsafe_allow_html=True)
     
     
     
@@ -1176,7 +1158,7 @@ def show_43to7(df, player_team):
 
 st.title("Player Similarity")
 st.subheader("Search for a player in order to find the most similar players!")
-st.write("Last Update: August 18th, 2026")
+st.write("Last Update: September 23rd, 2026")
 
 st.info(f"This project runs a similarity algorithm, based on player heatmaps and touches. Note therefore that the similarity is based only on player and ball movement.  \nData are taken from the 2025/26 season of the top 5 European Leagues (England, Spain, Italy, Germany, France).   \nComparisons are made between players with at least {played_matches_threshold} matches played during the season in the domestic league.")
 
