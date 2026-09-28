@@ -916,55 +916,7 @@ def get_distances(player_name, df_pca, sofa_under=False):
 
     return dist_df
 
-def show_43to7(df, player_team):
-
-    descriptions = {
-        'aerials_won_pct': 'Aerial Duels Won %',
-        'attempt_assists_per90': 'Assist Attempts (Per90)',
-        'avg_shot_distance': 'Average Shot Distance',
-        'ball_recoveries_per90': 'Ball Recoveries (Per90)',
-        'big_chances_created_per90': 'Big Chances Created (Per90)',
-        'big_chances_missed_per90': 'Big Chances Missed (Per90)',
-        'blocked_shots_per90': 'Blocked Shots (Per90)',
-        'chipped_passes_pct': 'Chipped Passes %',
-        'chipped_passes_per90': 'Chipped Passes (Per90)',
-        'clearances_per90': 'Clearances (Per90)',
-        'crosses_pct': 'Accurate Crosses %',
-        'crosses_per90': 'Attempted Crosses (Per90)',
-        'dispossessed_per90': 'Dispossessed (Per90)',
-        'dribbled_past_per90': 'Dribbled Past (Per90)',
-        'dribbles_pct': 'Successful Dribbles %',
-        'dribbles_per90': 'Attempted Dribbles (Per90)',
-        'fouled_per90': 'Fouls Received (Per90)',
-        'fouls_per90': 'Fouls Committed (Per90)',
-        'goal_conversion_pct': 'Goal Conversion %',
-        'ground_duels_won_pct': 'Ground Duels Won %',
-        'interceptions_per90': 'Interceptions (Per90)',
-        'key_passes_per90': 'Key Passes (Per90)',
-        'kilometers_per90': 'Kilometers Covered (Per90)',
-        'long_balls_pct': 'Accurate Long Balls %',
-        'long_balls_per90': 'Attempted Long Balls (Per90)',
-        'npxG_per90': 'npxG (Per90)',
-        'npxG_per_shot': 'npxG per Shot',
-        'pass_completion_pct': 'Pass Completion %',
-        'pass_final_third_per90': 'Passes in the Final Third (Per90)',
-        'passes_per90': 'Attempted Passes (Per90)',
-        'possession_lost_per90': 'Lost Possessions (Per90)',
-        'possession_won_att_third_per90': 'Possessions Won in the Attacking Third (Per90)',
-        'shots_inside_box_per90': 'Shots Inside the Box (Per90)',
-        'shots_on_target_pct': 'Shots on Target %',
-        'shots_on_target_per90': 'Shots on Target (Per90)',
-        'shots_outside_box_per90': 'Shots Outside the Box (Per90)',
-        'shots_per90': 'Attempted Shots (Per90)',
-        'sprints_per90': 'Sprints (Per90)',
-        'tackles_per90': 'Tackles (Per90)',
-        'touches_per90': 'Touches (Per90)',
-        'xA_per90': 'Expected Assists (Per90)',
-        'xGBuildup_per90': 'xGBuildup (Per90)',
-        'xGChain_per90': 'xGChain (Per90)'
-    }
-
-    def show_metric_html(metric, l_value, r_value, l_name, r_name):
+def show_metric_html(metric, l_value, r_value, l_name, r_name):
 
         max_value = max(abs(l_value), abs(r_value))
 
@@ -1089,25 +1041,18 @@ def show_43to7(df, player_team):
 
         return html_block
 
-    player_name = str.split(player_team, ' - ')[0]
-    team = str.split(player_team, ' - ')[1]
-    player_row = df.loc[(df['player'] == player_name) & (df['team'] == team)]
-    # st.write(player_row)
-    df_standard = standardize_df(df, sofa_under=True, minutes=1000)
-    df_pca, cont_df, loadings = apply_pca(df_standard, sofa_under=True)
-    sim_df, sim_df_pos = get_distances(player_name, df_pca, sofa_under=True)
-    sim_df_pos = sim_df_pos.reset_index(drop=True)
-    # st.write(sim_df_pos)
-
-    l_player_name = sim_df_pos.loc[0]['player']
-    l_player_team = sim_df_pos.loc[0]['team']
+def compare_43to7(l_player, r_player, df_standard, descriptions):
+    # st.write(l_player)
+    # st.write(r_player)
+    l_player_name = l_player['player']
+    l_player_team = l_player['team']
     l_player_row = df_standard.loc[(df_standard['player'] == l_player_name) & (df_standard['team'] == l_player_team)]
     # st.write(l_player_row)
     l_player_row = l_player_row.drop(columns=['league', 'player', 'team', 'position', 'games', 'minutes', 'nineties'])
     l_player_row = l_player_row.reset_index(drop=True)
 
-    r_player_name = sim_df_pos.loc[1]['player']
-    r_player_team = sim_df_pos.loc[1]['team']
+    r_player_name = r_player['player']
+    r_player_team = r_player['team']
     r_player_row = df_standard.loc[(df_standard['player'] == r_player_name) & (df_standard['team'] == r_player_team)]
     # st.write(r_player_row)
     r_player_row = r_player_row.drop(columns=['league', 'player', 'team', 'position', 'games', 'minutes', 'nineties'])
@@ -1147,6 +1092,105 @@ def show_43to7(df, player_team):
             ),
             unsafe_allow_html=True
         )
+
+def show_43to7(df, player_team):
+
+    descriptions = {
+        'aerials_won_pct': 'Aerial Duels Won %',
+        'attempt_assists_per90': 'Assist Attempts (Per90)',
+        'avg_shot_distance': 'Average Shot Distance',
+        'ball_recoveries_per90': 'Ball Recoveries (Per90)',
+        'big_chances_created_per90': 'Big Chances Created (Per90)',
+        'big_chances_missed_per90': 'Big Chances Missed (Per90)',
+        'blocked_shots_per90': 'Blocked Shots (Per90)',
+        'chipped_passes_pct': 'Chipped Passes %',
+        'chipped_passes_per90': 'Chipped Passes (Per90)',
+        'clearances_per90': 'Clearances (Per90)',
+        'crosses_pct': 'Accurate Crosses %',
+        'crosses_per90': 'Attempted Crosses (Per90)',
+        'dispossessed_per90': 'Dispossessed (Per90)',
+        'dribbled_past_per90': 'Dribbled Past (Per90)',
+        'dribbles_pct': 'Successful Dribbles %',
+        'dribbles_per90': 'Attempted Dribbles (Per90)',
+        'fouled_per90': 'Fouls Received (Per90)',
+        'fouls_per90': 'Fouls Committed (Per90)',
+        'goal_conversion_pct': 'Goal Conversion %',
+        'ground_duels_won_pct': 'Ground Duels Won %',
+        'interceptions_per90': 'Interceptions (Per90)',
+        'key_passes_per90': 'Key Passes (Per90)',
+        'kilometers_per90': 'Kilometers Covered (Per90)',
+        'long_balls_pct': 'Accurate Long Balls %',
+        'long_balls_per90': 'Attempted Long Balls (Per90)',
+        'npxG_per90': 'npxG (Per90)',
+        'npxG_per_shot': 'npxG per Shot',
+        'pass_completion_pct': 'Pass Completion %',
+        'pass_final_third_per90': 'Passes in the Final Third (Per90)',
+        'passes_per90': 'Attempted Passes (Per90)',
+        'possession_lost_per90': 'Lost Possessions (Per90)',
+        'possession_won_att_third_per90': 'Possessions Won in the Attacking Third (Per90)',
+        'shots_inside_box_per90': 'Shots Inside the Box (Per90)',
+        'shots_on_target_pct': 'Shots on Target %',
+        'shots_on_target_per90': 'Shots on Target (Per90)',
+        'shots_outside_box_per90': 'Shots Outside the Box (Per90)',
+        'shots_per90': 'Attempted Shots (Per90)',
+        'sprints_per90': 'Sprints (Per90)',
+        'tackles_per90': 'Tackles (Per90)',
+        'touches_per90': 'Touches (Per90)',
+        'xA_per90': 'Expected Assists (Per90)',
+        'xGBuildup_per90': 'xGBuildup (Per90)',
+        'xGChain_per90': 'xGChain (Per90)'
+    }
+
+
+    player_name = str.split(player_team, ' - ')[0]
+    team = str.split(player_team, ' - ')[1]
+    player_row = df.loc[(df['player'] == player_name) & (df['team'] == team)]
+    # st.write(player_row)
+    df_standard = standardize_df(df, sofa_under=True, minutes=1000)
+    df_pca, cont_df, loadings = apply_pca(df_standard, sofa_under=True)
+    sim_df, sim_df_pos = get_distances(player_name, df_pca, sofa_under=True)
+    sim_df_pos = sim_df_pos.reset_index(drop=True)
+    # st.write(sim_df_pos)
+
+    l_player = sim_df_pos.loc[0]
+    r_player = sim_df_pos.loc[1]
+
+    st.header(f"Most similar player (in the same position): {r_player['player']}")
+    st.write("Closer stats:")
+
+    compare_43to7(l_player=l_player, r_player=r_player, df_standard=df_standard, descriptions=descriptions)
+
+
+    top10 = sim_df_pos.iloc[1:11].reset_index(drop=True)
+    st.subheader(f"Similarity Top 10 - {player_name}")
+
+    col_left, col_right = st.columns(2)
+    
+    with col_left:
+        for i, row in top10.iloc[0:5].iterrows():
+            with st.container(border=True):
+                # st.markdown(f"**#{i+1} — {row['player_name']}**")
+                st.markdown(f"**#{i+1} — {row['player']} - {row['team']}**")
+                # st.progress(row['similarity_mixed'])
+                # st.caption(f"**{row['similarity_mixed']:.1%}** ({row['similarity_movement']:.1%} Heatmaps, {row['similarity_touch']:.1%} Movements)")
+                with st.expander("Compare players"):
+                    # compare_players(player_name_hea, row['player_name'], filename=filename, num_x_cells_tou=num_x_cells, num_y_cells_tou=num_y_cells, top=top, expander=True)
+                    st.write("Closer Stats:")
+                    compare_43to7(l_player, row, df_standard, descriptions)
+
+    with col_right:
+        for i, row in top10.iloc[5:10].iterrows():
+            with st.container(border=True):
+                # st.markdown(f"**#{i+1} — {row['player_name']}**")
+                st.markdown(f"**#{i+1} — {row['player']} - {row['team']}**")
+                # st.markdown(f"**#{i+1} — {row['player_name']} - {row['team']} - {row['position']}**")
+                # st.progress(row['similarity_mixed'])
+                # st.caption(f"**{row['similarity_mixed']:.1%}** ({row['similarity_movement']:.1%} Heatmaps, {row['similarity_touch']:.1%} Movements)")
+                with st.expander("Compare players"):
+                    # compare_players(player_name_hea, row['player_name'], filename=filename, num_x_cells_tou=num_x_cells, num_y_cells_tou=num_y_cells, top=top, expander=True)
+                    st.write("Closer Stats:")
+                    compare_43to7(l_player, row, df_standard, descriptions)
+    
     
     
     
