@@ -1151,16 +1151,22 @@ def show_43to7(df, player_team):
     sim_df, sim_df_pos = get_distances(player_name, df_pca, sofa_under=True)
     sim_df_pos = sim_df_pos.reset_index(drop=True)
     # st.write(sim_df_pos)
+    d50 = sim_df_pos["distance"].median()
+    p = 2
 
+    sim_df_pos["similarity"] = 100 / (1 + (sim_df_pos["distance"] / d50) ** p)
+    # st.write(sim_df_pos)
     l_player = sim_df_pos.loc[0]
     r_player = sim_df_pos.loc[1]
 
-    st.header(f"Most similar player (in the same position): {r_player['player']}")
+    
+
+    st.header(f"Most similar player (in the same position): {r_player['player']} ({r_player['similarity']/100:.1%})")
     st.write("Closer stats:")
 
     compare_43to7(l_player=l_player, r_player=r_player, df_standard=df_standard, descriptions=descriptions)
 
-
+    
     top10 = sim_df_pos.iloc[1:11].reset_index(drop=True)
     st.subheader(f"Similarity Top 10 - {player_name}")
 
@@ -1171,7 +1177,8 @@ def show_43to7(df, player_team):
             with st.container(border=True):
                 # st.markdown(f"**#{i+1} — {row['player_name']}**")
                 st.markdown(f"**#{i+1} — {row['player']} - {row['team']}**")
-                # st.progress(row['similarity_mixed'])
+                st.progress(row['similarity']/100)
+                st.caption(f"**{row['similarity']/100:.1%}**")
                 # st.caption(f"**{row['similarity_mixed']:.1%}** ({row['similarity_movement']:.1%} Heatmaps, {row['similarity_touch']:.1%} Movements)")
                 with st.expander("Compare players"):
                     # compare_players(player_name_hea, row['player_name'], filename=filename, num_x_cells_tou=num_x_cells, num_y_cells_tou=num_y_cells, top=top, expander=True)
@@ -1186,6 +1193,8 @@ def show_43to7(df, player_team):
                 # st.markdown(f"**#{i+1} — {row['player_name']} - {row['team']} - {row['position']}**")
                 # st.progress(row['similarity_mixed'])
                 # st.caption(f"**{row['similarity_mixed']:.1%}** ({row['similarity_movement']:.1%} Heatmaps, {row['similarity_touch']:.1%} Movements)")
+                st.progress(row['similarity']/100)
+                st.caption(f"**{row['similarity']/100:.1%}**")
                 with st.expander("Compare players"):
                     # compare_players(player_name_hea, row['player_name'], filename=filename, num_x_cells_tou=num_x_cells, num_y_cells_tou=num_y_cells, top=top, expander=True)
                     st.write("Closer Stats:")
@@ -1202,7 +1211,7 @@ def show_43to7(df, player_team):
 
 st.title("Player Similarity")
 st.subheader("Search for a player in order to find the most similar players!")
-st.write("Last Update: September 23rd, 2026")
+st.write("Last Update: September 28th, 2026")
 
 st.info(f"This project runs a similarity algorithm, based on player heatmaps and touches. Note therefore that the similarity is based only on player and ball movement.  \nData are taken from the 2025/26 season of the top 5 European Leagues (England, Spain, Italy, Germany, France).   \nComparisons are made between players with at least {played_matches_threshold} matches played during the season in the domestic league.")
 
