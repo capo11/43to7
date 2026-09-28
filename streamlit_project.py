@@ -1093,6 +1093,49 @@ def compare_43to7(l_player, r_player, df_standard, descriptions):
             unsafe_allow_html=True
         )
 
+def compute_scores(df_standard, player):
+    defense_cols = ['aerials_won_pct', 'ball_recoveries_per90', 'blocked_shots_per90', 'clearances_per90', 'dribbled_past_per90', 'fouls_per90', 'ground_duels_won_pct', 'interceptions_per90', 'kilometers_per90', 'possession_won_att_third_per90', 'sprints_per90', 'tackles_per90']
+    creation_cols = ['attempt_assists_per90', 'big_chances_created_per90', 'chipped_passes_pct', 'chipped_passes_per90', 'crosses_pct', 'crosses_per90', 'key_passes_per90', 'long_balls_pct', 'long_balls_per90', 'pass_completion_pct', 'pass_final_third_per90', 'passes_per90', 'xA_per90', 'xGBuildup_per90', 'xGChain_per90']
+    possession_cols = ['dispossessed_per90', 'dribbles_pct', 'fouled_per90', 'possession_lost_per90', 'touches_per90']
+    shooting_cols = ['avg_shot_distance', 'big_chances_missed_per90', 'goal_conversion_pct', 'npxG_per90', 'npxG_per_shot', 'shots_per90', 'shots_inside_box_per90', 'shots_outside_box_per90', 'shots_on_target_pct', 'shots_on_target_per90']
+
+
+    df_standard = df_standard.copy()
+
+    # colonne che devono essere invertite
+    df_standard["dribbled_past_per90"] *= -1
+    df_standard["dispossessed_per90"] *= -1
+    df_standard["possession_lost_per90"] *= -1
+    
+
+    df_standard['defense_raw'] = df_standard[defense_cols].mean(axis=1)
+    df_standard["defense_score"] = (
+        df_standard["defense_raw"].rank(pct=True) * 100
+    )
+    df_standard['creation_raw'] = df_standard[creation_cols].mean(axis=1)
+    df_standard["creation_score"] = (
+        df_standard["creation_raw"].rank(pct=True) * 100
+    )
+    df_standard['possession_raw'] = df_standard[possession_cols].mean(axis=1)
+    df_standard["possession_score"] = (
+        df_standard["possession_raw"].rank(pct=True) * 100
+    )
+    df_standard['shooting_raw'] = df_standard[shooting_cols].mean(axis=1)
+    df_standard["shooting_score"] = (
+        df_standard["shooting_raw"].rank(pct=True) * 100
+    )
+    # st.write(df_standard)
+    one, two, three, four = st.columns(4)
+    with one:
+        st.write(df_standard.sort_values(by=['defense_score'], ascending=False)[['player', 'defense_score']].reset_index(drop=True))
+    with two:
+            st.write(df_standard.sort_values(by=['creation_score'], ascending=False)[['player', 'creation_score']].reset_index(drop=True))
+    with three:
+            st.write(df_standard.sort_values(by=['possession_score'], ascending=False)[['player', 'possession_score']].reset_index(drop=True))
+    with four:
+            st.write(df_standard.sort_values(by=['shooting_score'], ascending=False)[['player', 'shooting_score']].reset_index(drop=True))
+
+
 def show_43to7(df, player_team):
 
     descriptions = {
@@ -1158,6 +1201,8 @@ def show_43to7(df, player_team):
     # st.write(sim_df_pos)
     l_player = sim_df_pos.loc[0]
     r_player = sim_df_pos.loc[1]
+
+    compute_scores(df_standard, l_player)
 
     
 
