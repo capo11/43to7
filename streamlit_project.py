@@ -12,6 +12,11 @@ from mplsoccer import VerticalPitch
 from streamlit_option_menu import option_menu
 from matplotlib.colors import Normalize
 from matplotlib.colors import PowerNorm
+from mplsoccer import Radar, PyPizza
+from matplotlib.patches import Patch
+from matplotlib.lines import Line2D
+
+
 
 
 played_matches_threshold = 10
@@ -907,7 +912,25 @@ def get_distances(player_name, df_pca, sofa_under=False):
     if sofa_under==True:
         search_pos = search_row['position'].iloc[0]
         # print(search_pos, type(search_pos))
-        dist_df_pos = dist_df.loc[dist_df['position'] == search_pos]
+        # dist_df_pos = dist_df.loc[dist_df['position'] == search_pos]
+        comparison_groups = {
+                'DC': ['DC'],
+                'DL': ['DL', 'DML'],
+                'DR': ['DR', 'DMR'],
+                'DMC': ['DMC', 'MC'],
+                'DML': ['DML', 'DL', 'ML'],
+                'DMR': ['DMR', 'DR', 'MR'],
+                'MC': ['MC', 'DMC', 'AMC'],
+                'ML': ['ML', 'DML', 'AML'],
+                'MR': ['MR', 'DMR', 'AMR'],
+                'AMC': ['AMC', 'MC'],
+                'FR': ['FR', 'MR'],
+                'FL': ['FL', 'ML'],
+                'FW': ['FW', 'AMC']
+            }
+        
+        compare_positions = comparison_groups[search_pos]
+        dist_df_pos = dist_df.loc[dist_df['position'].isin(compare_positions)]
         dist_df_pos['rank_distance'] = dist_df_pos['distance'].rank(method='min')
         dist_df_pos['rank_cosine_similarity'] = dist_df_pos['cosine_similarity'].rank(ascending=False, method='min')
         dist_df_pos['rank_distance'] = dist_df_pos['rank_distance'].astype(int)
@@ -1093,47 +1116,257 @@ def compare_43to7(l_player, r_player, df_standard, descriptions):
             unsafe_allow_html=True
         )
 
-def compute_scores(df_standard, player):
+def compute_scores(df, player):
     defense_cols = ['aerials_won_pct', 'ball_recoveries_per90', 'blocked_shots_per90', 'clearances_per90', 'dribbled_past_per90', 'fouls_per90', 'ground_duels_won_pct', 'interceptions_per90', 'kilometers_per90', 'possession_won_att_third_per90', 'sprints_per90', 'tackles_per90']
     creation_cols = ['attempt_assists_per90', 'big_chances_created_per90', 'chipped_passes_pct', 'chipped_passes_per90', 'crosses_pct', 'crosses_per90', 'key_passes_per90', 'long_balls_pct', 'long_balls_per90', 'pass_completion_pct', 'pass_final_third_per90', 'passes_per90', 'xA_per90', 'xGBuildup_per90', 'xGChain_per90']
     possession_cols = ['dispossessed_per90', 'dribbles_pct', 'fouled_per90', 'possession_lost_per90', 'touches_per90']
     shooting_cols = ['avg_shot_distance', 'big_chances_missed_per90', 'goal_conversion_pct', 'npxG_per90', 'npxG_per_shot', 'shots_per90', 'shots_inside_box_per90', 'shots_outside_box_per90', 'shots_on_target_pct', 'shots_on_target_per90']
+    # st.write(df)
+    comparison_groups = {
+        'DC': ['DC'],
+        'DL': ['DL', 'DML'],
+        'DR': ['DR', 'DMR'],
+        'DMC': ['DMC', 'MC'],
+        'DML': ['DML', 'DL', 'ML'],
+        'DMR': ['DMR', 'DR', 'MR'],
+        'MC': ['MC', 'DMC', 'AMC'],
+        'ML': ['ML', 'DML', 'AML'],
+        'MR': ['MR', 'DMR', 'AMR'],
+        'AMC': ['AMC', 'MC'],
+        'FR': ['FR', 'MR'],
+        'FL': ['FL', 'ML'],
+        'FW': ['FW', 'AMC']
+    }
 
+    compare_positions = comparison_groups[player['position']]
+    # st.write("Positions to Compare:", compare_positions)
+    df_pos = df.loc[df['position'].isin(compare_positions)]
+    # st.write(df_pos)
+    df_standard_pos = standardize_df(df_pos, sofa_under=True, minutes=1000)
 
-    df_standard = df_standard.copy()
+    df_standard_pos = df_standard_pos.copy()
 
     # colonne che devono essere invertite
-    df_standard["dribbled_past_per90"] *= -1
-    df_standard["dispossessed_per90"] *= -1
-    df_standard["possession_lost_per90"] *= -1
+    df_standard_pos["dribbled_past_per90"] *= -1
+    df_standard_pos["dispossessed_per90"] *= -1
+    df_standard_pos["possession_lost_per90"] *= -1
     
 
-    df_standard['defense_raw'] = df_standard[defense_cols].mean(axis=1)
-    df_standard["defense_score"] = (
-        df_standard["defense_raw"].rank(pct=True) * 100
+    df_standard_pos['defense_raw'] = df_standard_pos[defense_cols].mean(axis=1)
+    df_standard_pos["defense_score"] = (
+        df_standard_pos["defense_raw"].rank(pct=True) * 100
     )
-    df_standard['creation_raw'] = df_standard[creation_cols].mean(axis=1)
-    df_standard["creation_score"] = (
-        df_standard["creation_raw"].rank(pct=True) * 100
+    df_standard_pos['creation_raw'] = df_standard_pos[creation_cols].mean(axis=1)
+    df_standard_pos["creation_score"] = (
+        df_standard_pos["creation_raw"].rank(pct=True) * 100
     )
-    df_standard['possession_raw'] = df_standard[possession_cols].mean(axis=1)
-    df_standard["possession_score"] = (
-        df_standard["possession_raw"].rank(pct=True) * 100
+    df_standard_pos['possession_raw'] = df_standard_pos[possession_cols].mean(axis=1)
+    df_standard_pos["possession_score"] = (
+        df_standard_pos["possession_raw"].rank(pct=True) * 100
     )
-    df_standard['shooting_raw'] = df_standard[shooting_cols].mean(axis=1)
-    df_standard["shooting_score"] = (
-        df_standard["shooting_raw"].rank(pct=True) * 100
+    df_standard_pos['shooting_raw'] = df_standard_pos[shooting_cols].mean(axis=1)
+    df_standard_pos["shooting_score"] = (
+        df_standard_pos["shooting_raw"].rank(pct=True) * 100
     )
-    # st.write(df_standard)
-    one, two, three, four = st.columns(4)
-    with one:
-        st.write(df_standard.sort_values(by=['defense_score'], ascending=False)[['player', 'defense_score']].reset_index(drop=True))
-    with two:
-            st.write(df_standard.sort_values(by=['creation_score'], ascending=False)[['player', 'creation_score']].reset_index(drop=True))
-    with three:
-            st.write(df_standard.sort_values(by=['possession_score'], ascending=False)[['player', 'possession_score']].reset_index(drop=True))
-    with four:
-            st.write(df_standard.sort_values(by=['shooting_score'], ascending=False)[['player', 'shooting_score']].reset_index(drop=True))
+    # st.write(df_standard_pos)
+    player_row = df_standard_pos.loc[df_standard_pos['player'] == player['player']]
+    # st.write(player_row[['player', 'league', 'team', 'position', 'defense_score', 'creation_score', 'possession_score', 'shooting_score']])
+    stats = {
+        "player": player_row['player'].iloc[0],
+        "league": player_row['league'].iloc[0],
+        "team": player_row['team'].iloc[0],
+        "position": player_row['position'].iloc[0],
+        "defense": player_row['defense_score'].iloc[0],
+        "creation": player_row['creation_score'].iloc[0],
+        "possession": player_row['possession_score'].iloc[0],
+        "shooting": player_row['shooting_score'].iloc[0],
+    }
+    # st.write(stats)
+    return stats
+
+
+def compare_radars(l_stats, r_stats):
+
+    params = ['Defense', 'Creation', 'Possession', 'Shooting']
+
+    l_values = [
+        int(l_stats['defense']),
+        int(l_stats['creation']),
+        int(l_stats['possession']),
+        int(l_stats['shooting'])
+    ]
+
+    r_values = [
+        int(r_stats['defense']),
+        int(r_stats['creation']),
+        int(r_stats['possession']),
+        int(r_stats['shooting'])
+    ]
+
+    # =========================================================
+    # CALCOLO DEI PARAMETRI DA SPOSTARE
+    # =========================================================
+
+    # Se la differenza tra i due valori è <= questa soglia,
+    # spostiamo il valore minore verso il basso.
+    threshold = 5
+
+    params_offset = []
+
+    for l_val, r_val in zip(l_values, r_values):
+
+        difference = abs(l_val - r_val)
+
+        if difference <= threshold:
+            # I valori sono vicini:
+            # spostiamo il minore
+            params_offset.append(True)
+        else:
+            # Sono abbastanza distanti:
+            # lasciamo tutto normale
+            params_offset.append(False)
+
+    # =========================================================
+    # SETUP PIZZA
+    # =========================================================
+
+    pizza = PyPizza(
+        params=params,
+        background_color='#1A1A1D',
+        straight_line_color='white',
+        straight_line_lw=1,
+        last_circle_lw=0,
+        other_circle_color='white',
+        other_circle_ls='-',
+        other_circle_lw=1
+    )
+
+    # =========================================================
+    # PRIMO GIOCATORE
+    # =========================================================
+
+    fig, ax = pizza.make_pizza(
+        figsize=(8, 8),
+
+        values=l_values,
+
+        kwargs_values=dict(
+            color='#FFFFFF',
+            fontsize=9,
+            bbox={
+                'edgecolor': '#034694',
+                'facecolor': '#034694',
+                'boxstyle': 'round, pad=.2',
+                'lw': 1
+            }
+        ),
+
+        kwargs_slices=dict(
+            facecolor='#034694',
+            edgecolor='#034694',
+            linewidth=1,
+            alpha=0.45
+        ),
+
+        kwargs_params=dict(
+            color='#FFFFFF',
+            fontsize=10,
+            fontproperties='monospace'
+        )
+    )
+
+    # =========================================================
+    # SECONDO GIOCATORE
+    # =========================================================
+
+    pizza.make_pizza(
+        values=r_values,
+
+        kwargs_values=dict(
+            color='#FFFFFF',
+            fontsize=9,
+            bbox={
+                'edgecolor': '#FF0000',
+                'facecolor': '#FF0000',
+                'boxstyle': 'round, pad=.2',
+                'lw': 1
+            }
+        ),
+
+        kwargs_slices=dict(
+            facecolor='#FF0000',
+            edgecolor='#FF0000',
+            linewidth=1,
+            alpha=0.45
+        ),
+
+        kwargs_params=dict(
+            color='#FFFFFF',
+            fontsize=10,
+            fontproperties='monospace'
+        ),
+
+        ax=ax
+    )
+
+    # =========================================================
+    # SPOSTA LE ETICHETTE CHE SI SOVRAPPONGONO
+    # =========================================================
+
+    pizza.adjust_texts(
+        params_offset=params_offset,
+        offset=-0.17
+    )
+
+    # =========================================================
+    # MARGINI
+    # =========================================================
+
+    fig.subplots_adjust(
+        top=0.8,
+        bottom=0.2,
+        left=0.2,
+        right=0.8
+    )
+
+    # =========================================================
+    # TITOLO
+    # =========================================================
+
+    ax.text(
+        x=.5,
+        y=1.1,
+        s=l_stats['player'],
+        fontsize=20,
+        c='#034694',
+        ha='right',
+        va='center',
+        transform=ax.transAxes
+    )
+
+    ax.text(
+        x=.5,
+        y=1.1,
+        s=f"  vs  {r_stats['player']}",
+        fontsize=20,
+        c='#FF0000',
+        ha='left',
+        va='center',
+        transform=ax.transAxes
+    )
+
+    # =========================================================
+    
+
+    # =========================================================
+    # STREAMLIT
+    # =========================================================
+
+    st.pyplot(fig)
+
+
+    
+
 
 
 def show_43to7(df, player_team):
@@ -1202,14 +1435,19 @@ def show_43to7(df, player_team):
     l_player = sim_df_pos.loc[0]
     r_player = sim_df_pos.loc[1]
 
-    compute_scores(df_standard, l_player)
+    
 
     
 
-    st.header(f"Most similar player (in the same position): {r_player['player']} ({r_player['similarity']/100:.1%})")
+    st.header(f"Most similar player (in the same position group): {r_player['player']} ({r_player['similarity']/100:.1%})")
     st.write("Closer stats:")
 
-    compare_43to7(l_player=l_player, r_player=r_player, df_standard=df_standard, descriptions=descriptions)
+    l_player_stats = compute_scores(df, l_player)
+    r_player_stats = compute_scores(df, r_player)
+
+    compare_radars(l_player_stats, r_player_stats)
+
+    # compare_43to7(l_player=l_player, r_player=r_player, df_standard=df_standard, descriptions=descriptions)
 
     
     top10 = sim_df_pos.iloc[1:11].reset_index(drop=True)
@@ -1221,21 +1459,25 @@ def show_43to7(df, player_team):
         for i, row in top10.iloc[0:5].iterrows():
             with st.container(border=True):
                 # st.markdown(f"**#{i+1} — {row['player_name']}**")
-                st.markdown(f"**#{i+1} — {row['player']} - {row['team']}**")
+                # st.markdown(f"**#{i+1} — {row['player']} - {row['team']}**")
+                st.markdown(f"**#{i+1} — {row['player']} - {row['team']} - {row['position']}**")
                 st.progress(row['similarity']/100)
                 st.caption(f"**{row['similarity']/100:.1%}**")
                 # st.caption(f"**{row['similarity_mixed']:.1%}** ({row['similarity_movement']:.1%} Heatmaps, {row['similarity_touch']:.1%} Movements)")
                 with st.expander("Compare players"):
                     # compare_players(player_name_hea, row['player_name'], filename=filename, num_x_cells_tou=num_x_cells, num_y_cells_tou=num_y_cells, top=top, expander=True)
                     st.write("Closer Stats:")
-                    compare_43to7(l_player, row, df_standard, descriptions)
+                    # compare_43to7(l_player, row, df_standard, descriptions)
+                    r_player_stats = compute_scores(df, row)
+                    
+                    compare_radars(l_player_stats, r_player_stats)
 
     with col_right:
         for i, row in top10.iloc[5:10].iterrows():
             with st.container(border=True):
                 # st.markdown(f"**#{i+1} — {row['player_name']}**")
-                st.markdown(f"**#{i+1} — {row['player']} - {row['team']}**")
-                # st.markdown(f"**#{i+1} — {row['player_name']} - {row['team']} - {row['position']}**")
+                # st.markdown(f"**#{i+1} — {row['player']} - {row['team']}**")
+                st.markdown(f"**#{i+1} — {row['player']} - {row['team']} - {row['position']}**")
                 # st.progress(row['similarity_mixed'])
                 # st.caption(f"**{row['similarity_mixed']:.1%}** ({row['similarity_movement']:.1%} Heatmaps, {row['similarity_touch']:.1%} Movements)")
                 st.progress(row['similarity']/100)
@@ -1243,7 +1485,10 @@ def show_43to7(df, player_team):
                 with st.expander("Compare players"):
                     # compare_players(player_name_hea, row['player_name'], filename=filename, num_x_cells_tou=num_x_cells, num_y_cells_tou=num_y_cells, top=top, expander=True)
                     st.write("Closer Stats:")
-                    compare_43to7(l_player, row, df_standard, descriptions)
+                    # compare_43to7(l_player, row, df_standard, descriptions)
+                    r_player_stats = compute_scores(df, row)
+                                        
+                    compare_radars(l_player_stats, r_player_stats)
     
     
     
