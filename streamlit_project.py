@@ -1,3 +1,5 @@
+import io
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -1207,8 +1209,6 @@ def compare_radars(l_stats, r_stats):
     # CALCOLO DEI PARAMETRI DA SPOSTARE
     # =========================================================
 
-    # Se la differenza tra i due valori è <= questa soglia,
-    # spostiamo il valore minore verso il basso.
     threshold = 5
 
     params_offset = []
@@ -1218,12 +1218,8 @@ def compare_radars(l_stats, r_stats):
         difference = abs(l_val - r_val)
 
         if difference <= threshold:
-            # I valori sono vicini:
-            # spostiamo il minore
             params_offset.append(True)
         else:
-            # Sono abbastanza distanti:
-            # lasciamo tutto normale
             params_offset.append(False)
 
     # =========================================================
@@ -1232,7 +1228,7 @@ def compare_radars(l_stats, r_stats):
 
     pizza = PyPizza(
         params=params,
-        background_color='#1A1A1D',
+        background_color='none',       # SFONDO TRASPARENTE
         straight_line_color='white',
         straight_line_lw=1,
         last_circle_lw=0,
@@ -1265,7 +1261,7 @@ def compare_radars(l_stats, r_stats):
             facecolor='#034694',
             edgecolor='#034694',
             linewidth=1,
-            alpha=0.45
+            alpha=0.25                 # PIÙ TRASPARENTE
         ),
 
         kwargs_params=dict(
@@ -1297,7 +1293,7 @@ def compare_radars(l_stats, r_stats):
             facecolor='#FF0000',
             edgecolor='#FF0000',
             linewidth=1,
-            alpha=0.45
+            alpha=0.25                 # PIÙ TRASPARENTE
         ),
 
         kwargs_params=dict(
@@ -1310,7 +1306,7 @@ def compare_radars(l_stats, r_stats):
     )
 
     # =========================================================
-    # SPOSTA LE ETICHETTE CHE SI SOVRAPPONGONO
+    # SPOSTA LE ETICHETTE DEI VALORI CHE SI SOVRAPPONGONO
     # =========================================================
 
     pizza.adjust_texts(
@@ -1319,50 +1315,82 @@ def compare_radars(l_stats, r_stats):
     )
 
     # =========================================================
+    # AVVICINA DEFENSE E POSSESSION AL GRAFICO
+    # =========================================================
+
+    # Le label dei parametri sono contenute in ax.texts.
+    # L'ordine segue quello di params:
+    #
+    # 0 = Defense
+    # 1 = Creation
+    # 2 = Possession
+    # 3 = Shooting
+
+    param_texts = ax.texts[-4:]
+
+    # Defense
+    x, y = param_texts[0].get_position()
+    param_texts[0].set_position((x, y - 0.08))
+
+    # Possession
+    x, y = param_texts[2].get_position()
+    param_texts[2].set_position((x, y + 0.08))
+
+    # =========================================================
+    # LEGENDA
+    # =========================================================
+
+    legend = ax.legend(
+        handles=[
+            plt.Line2D(
+                [0], [0],
+                color='#034694',
+                lw=3,
+                label=l_stats['player']
+            ),
+            plt.Line2D(
+                [0], [0],
+                color='#FF0000',
+                lw=3,
+                label=r_stats['player']
+            )
+        ],
+        loc='lower center',
+        bbox_to_anchor=(0.5, -0.12),
+        ncol=2,
+        frameon=False,
+        fontsize=10
+    )
+
+    # Colore del testo della legenda
+    for text in legend.get_texts():
+        text.set_color('white')
+
+    # =========================================================
     # MARGINI
     # =========================================================
 
     fig.subplots_adjust(
-        top=0.8,
-        bottom=0.2,
-        left=0.2,
-        right=0.8
+        top=0.9,
+        bottom=0.15,
+        left=0.15,
+        right=0.85
     )
 
     # =========================================================
-    # TITOLO
+    # SFONDO FIGURA TRASPARENTE
     # =========================================================
 
-    ax.text(
-        x=.5,
-        y=1.1,
-        s=l_stats['player'],
-        fontsize=20,
-        c='#034694',
-        ha='right',
-        va='center',
-        transform=ax.transAxes
-    )
-
-    ax.text(
-        x=.5,
-        y=1.1,
-        s=f"  vs  {r_stats['player']}",
-        fontsize=20,
-        c='#FF0000',
-        ha='left',
-        va='center',
-        transform=ax.transAxes
-    )
-
-    # =========================================================
-    
+    fig.patch.set_alpha(0)
+    ax.patch.set_alpha(0)
 
     # =========================================================
     # STREAMLIT
     # =========================================================
 
-    st.pyplot(fig)
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", transparent=True, dpi=300)
+    st.image(buf)
 
 
     
@@ -1440,7 +1468,7 @@ def show_43to7(df, player_team):
     
 
     st.header(f"Most similar player (in the same position group): {r_player['player']} ({r_player['similarity']/100:.1%})")
-    st.write("Closer stats:")
+    # st.write("Closer stats:")
 
     l_player_stats = compute_scores(df, l_player)
     r_player_stats = compute_scores(df, r_player)
@@ -1466,7 +1494,7 @@ def show_43to7(df, player_team):
                 # st.caption(f"**{row['similarity_mixed']:.1%}** ({row['similarity_movement']:.1%} Heatmaps, {row['similarity_touch']:.1%} Movements)")
                 with st.expander("Compare players"):
                     # compare_players(player_name_hea, row['player_name'], filename=filename, num_x_cells_tou=num_x_cells, num_y_cells_tou=num_y_cells, top=top, expander=True)
-                    st.write("Closer Stats:")
+                    # st.write("Closer Stats:")
                     # compare_43to7(l_player, row, df_standard, descriptions)
                     r_player_stats = compute_scores(df, row)
                     
@@ -1484,7 +1512,7 @@ def show_43to7(df, player_team):
                 st.caption(f"**{row['similarity']/100:.1%}**")
                 with st.expander("Compare players"):
                     # compare_players(player_name_hea, row['player_name'], filename=filename, num_x_cells_tou=num_x_cells, num_y_cells_tou=num_y_cells, top=top, expander=True)
-                    st.write("Closer Stats:")
+                    # st.write("Closer Stats:")
                     # compare_43to7(l_player, row, df_standard, descriptions)
                     r_player_stats = compute_scores(df, row)
                                         
