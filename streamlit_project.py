@@ -26,13 +26,13 @@ minutes_threshold = 1000
 
 st.set_page_config(layout="wide")
 
-def find_alt_name(player_name):
+def find_alt_name(name):
     df = pd.read_csv('utility/alt_names.csv')
-    player_df = df.loc[df['name'] == player_name]
+    player_df = df.loc[df['name'] == name]
     if len(player_df) == 0:
-        player_df = df.loc[df['alt_name'] == player_name]
+        player_df = df.loc[df['alt_name'] == name]
         if len(player_df) == 0:
-            st.error(f"Alternative name for player {player_name} not found!")
+            st.error(f"Alternative name for player {name} not found!")
         else:
             row = player_df.iloc[0]
             alt_name = row['name']
@@ -346,7 +346,7 @@ def get_similarities_movements(player_id, filename='seriea_2526', num_x_cells=5,
     result_df = result_df.sort_values(by=['similarity'], ascending=False)
     return result_df
 
-def show_heatmaps(player_name, filename='top8_2526', num_x_cells=30, num_y_cells=30):
+def show_heatmaps(player_team, filename='top8_2526', num_x_cells=30, num_y_cells=30):
     df = pd.read_pickle('grids/' + filename +'_' + str(num_x_cells) + '_' + str(num_y_cells) + '.pkl')
     df = df.loc[df['played_matches'] >= played_matches_threshold]
     df = df.sort_values(by=['player_name'])
@@ -360,7 +360,10 @@ def show_heatmaps(player_name, filename='top8_2526', num_x_cells=30, num_y_cells
     # )
 
     # if player_name:
-    row = df.loc[df['player_name'].str.lower() == player_name.lower()].iloc[0]
+    player_name = str.split(player_team, ' - ')[0]
+    team = str.split(player_team, ' - ')[1]
+    row = df.loc[(df['player_name'].str.lower() == player_name.lower()) & (df['team'] == team)].iloc[0]
+    # row = df.loc[df['player_name'].str.lower() == player_name.lower()].iloc[0]
     player_id = row['player_id']
     fig, similarities = plot_players(player_id=player_id, filename=filename, num_x_cells=num_x_cells, num_y_cells=num_y_cells)
     st.pyplot(fig)
@@ -538,20 +541,20 @@ def compare_players(player_name1, player_name2, filename, num_x_cells_hea=30, nu
     player_name1_hea = player_name1
     player_name1_tou = player_name1
     
-    if type != 'movement':
+    if type == 'heatmap':
         df_hea = pd.read_pickle('grids/' + filename + '_' + str(num_x_cells_hea) + '_' + str(num_y_cells_hea) + '.pkl')
         df_hea = df_hea.loc[df_hea['played_matches'] >= played_matches_threshold]
         df_hea["player_name"] = df_hea["player_name"].apply(unidecode)
-        player_df = df_hea.loc[df_hea['player_name'].str.lower() == player_name.lower()]
+        player_df = df_hea.loc[df_hea['player_name'].str.lower() == player_name1_hea.lower()]
         if len(player_df) == 0:
-            alt_name = find_alt_name(player_name=player_name)
+            alt_name = find_alt_name(name=player_name1_hea)
             player_df = df_hea.loc[df_hea['player_name'].str.lower() == alt_name.lower()]
             if len(player_df) == 0:
                 st.error(f"Player {player_name} not found!")
             player_name1_hea = alt_name
         if len(player_df)>1:
             st.error("Player has more than one team")
-    if type != 'heatmap':
+    if type == 'movement':
         df_tou = pd.read_pickle('grids_movements/' + filename + '_' + str(num_x_cells_tou) + '_' + str(num_y_cells_tou) + '.pkl')
         df_tou = df_tou.loc[df_tou['played_matches'] >= played_matches_threshold]
         df_tou["player_name"] = df_tou["player_name"].apply(unidecode)
@@ -1572,7 +1575,7 @@ if player_name:
     if sim_choice == "43to7":
         show_43to7(df, player_name)
     elif sim_choice == 'Heatmap Similarity':
-        show_heatmaps(player_name=player_name, filename='top5_2526')
+        show_heatmaps(player_team=player_name, filename='top5_2526')
     elif sim_choice == 'Movement Similarity':
         wide_movements = st.checkbox('Wider Movements')
         more_movements = st.checkbox('Show More Movements')
