@@ -56,7 +56,7 @@ def get_similarities(player_id, filename='top8_2526', num_x_cells=30, num_y_cell
     sim_df = sim_df.loc[sim_df['played_matches'] >= played_matches_threshold]
     player_names = sim_df['player_name']
     player_ids = sim_df['player_id']
-    player_pd = sim_df['position_detailed']
+    player_pd = sim_df['position']
     if 'league' in sim_df.columns:
         player_leagues = sim_df['league']
     if 'team' in sim_df.columns:
@@ -367,6 +367,26 @@ def show_heatmaps(player_team, filename='top8_2526', num_x_cells=30, num_y_cells
     player_id = row['player_id']
     fig, similarities = plot_players(player_id=player_id, filename=filename, num_x_cells=num_x_cells, num_y_cells=num_y_cells)
     st.pyplot(fig)
+    # st.write(similarities)
+    comparison_groups = {
+            'DC': ['DC'],
+            'DL': ['DL', 'DML'],
+            'DR': ['DR', 'DMR'],
+            'DMC': ['DMC', 'MC'],
+            'DML': ['DML', 'DL', 'ML'],
+            'DMR': ['DMR', 'DR', 'MR'],
+            'MC': ['MC', 'DMC', 'AMC'],
+            'ML': ['ML', 'DML', 'AML'],
+            'MR': ['MR', 'DMR', 'AMR'],
+            'AMC': ['AMC', 'MC'],
+            'FR': ['FR', 'MR'],
+            'FL': ['FL', 'ML'],
+            'FW': ['FW', 'AMC']
+        }
+    search_pos = row['position']
+    compare_positions = comparison_groups[search_pos]
+    similarities = similarities.loc[similarities['position'].isin(compare_positions)]
+    # st.write(similarities)
 
     top10 = similarities.iloc[1:11].reset_index(drop=True)
     st.subheader(f"Similarity Top 10 - {player_name}")
@@ -376,8 +396,8 @@ def show_heatmaps(player_team, filename='top8_2526', num_x_cells=30, num_y_cells
     with col_left:
         for i, row in top10.iloc[0:5].iterrows():
             with st.container(border=True):
-                # st.markdown(f"**#{i+1} — {row['player_name']} - {row['team']} - {row['position']}**")
-                st.markdown(f"**#{i+1} — {row['player_name']} - {row['team']}**")
+                st.markdown(f"**#{i+1} — {row['player_name']} - {row['team']} - {row['position']}**")
+                # st.markdown(f"**#{i+1} — {row['player_name']} - {row['team']}**")
                 st.progress(row['similarity'])
                 st.caption(f"**{row['similarity']:.1%}**")
                 with st.expander("Compare players"):
@@ -386,8 +406,8 @@ def show_heatmaps(player_team, filename='top8_2526', num_x_cells=30, num_y_cells
     with col_right:
         for i, row in top10.iloc[5:10].iterrows():
             with st.container(border=True):
-                # st.markdown(f"**#{i+1} — {row['player_name']} - {row['team']} - {row['position']}**")
-                st.markdown(f"**#{i+1} — {row['player_name']} - {row['team']}**")
+                st.markdown(f"**#{i+1} — {row['player_name']} - {row['team']} - {row['position']}**")
+                # st.markdown(f"**#{i+1} — {row['player_name']} - {row['team']}**")
                 st.progress(row['similarity'])
                 st.caption(f"**{row['similarity']:.1%}**")
                 with st.expander("Compare players"):
@@ -672,14 +692,21 @@ def show_combined(player_name, filename, num_x_cells=5, num_y_cells=5, top=20):
     df_hea = pd.read_pickle('grids/' + filename + '_30_30.pkl')
     df_hea = df_hea.loc[df_hea['played_matches'] >= played_matches_threshold]
     df_hea["player_name"] = df_hea["player_name"].apply(unidecode)
-    df_tou = pd.read_pickle('grids_movements/' + filename + '_' + str(num_x_cells) + '_' + str(num_y_cells) + '.pkl')
-    df_hea = df_hea.loc[df_hea['played_matches'] >= played_matches_threshold]
-    df_tou["player_name"] = df_tou["player_name"].apply(unidecode)
+
+    df_43 = pd.read_csv('43to7/stats_sofa_under.csv')
+    df_43 = df_43.loc[df_43['position'] != 'GK']
+    df_43 = df_43.loc[df_43['minutes'] >= minutes_threshold]
+    df_43['player'] = df_43['player'].apply(unidecode)
+    df_43['player_team'] = df_43['player'] + ' - ' + df_43['team']
+    df_43 = df.sort_values(by=['player_team'])
+    # df_tou = pd.read_pickle('grids_movements/' + filename + '_' + str(num_x_cells) + '_' + str(num_y_cells) + '.pkl')
+    # df_hea = df_hea.loc[df_hea['played_matches'] >= played_matches_threshold]
+    # df_tou["player_name"] = df_tou["player_name"].apply(unidecode)
     # st.write(df_hea)
     # st.write(df_tou)
 
     player_name_hea = player_name
-    player_name_tou = player_name
+    player_name_43 = player_name
 
     player_df = df_hea.loc[df_hea['player_name'].str.lower() == player_name.lower()]
     # st.write(player_name)
@@ -696,10 +723,12 @@ def show_combined(player_name, filename, num_x_cells=5, num_y_cells=5, top=20):
     player_id = row['player_id']
     sim_mov = get_similarities(player_id=player_id, filename=filename)
 
-    player_df = df_tou.loc[df_tou['player_name'].str.lower() == player_name.lower()]
+
+
+    player_df = df_43.loc[df_43['player'].str.lower() == player_name.lower()]
     if len(player_df) == 0:
         alt_name = find_alt_name(player_name=player_name)
-        player_df = df_tou.loc[df_tou['player_name'].str.lower() == alt_name.lower()]
+        player_df = df_43.loc[df_43['player'].str.lower() == alt_name.lower()]
         if len(player_df) == 0:
             st.error(f"Player {player_name} not found!")
     if len(player_df)>1:
@@ -1591,19 +1620,7 @@ if player_name:
             top = 10
         show_movements(num_x_cells=num_x_cells, num_y_cells=num_y_cells, top=top, player_name=player_name, filename='top5_2526')
     elif sim_choice == 'Combined Similarity':
-        wide_movements = st.checkbox('Wider Movements')
-        more_movements = st.checkbox('Show More Movements')
-        if not wide_movements:
-            num_x_cells = 7
-            num_y_cells = 7
-        else:
-            num_x_cells = 5
-            num_y_cells = 5
-        if not more_movements:
-            top = 10
-        else:
-            top = 20
-        show_combined(player_name, filename='top5_2526', num_x_cells=num_x_cells, num_y_cells=num_y_cells, top=top)
+        show_combined(player_name, filename='top5_2526')
     elif sim_choice == 'Compare Players':
         filename = 'top5_2526'
         df = pd.read_pickle('grids/' + filename + '_30_30.pkl')
