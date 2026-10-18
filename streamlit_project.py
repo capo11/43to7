@@ -556,137 +556,7 @@ def compare_movements(player_name1, player_name2, df, num_x_cells, num_y_cells, 
     
     st.pyplot(fig)
 
-def compare_players(player_name1, player_name2, filename, num_x_cells_hea=30, num_y_cells_hea=30, num_x_cells_tou=5, num_y_cells_tou=5, top=20, expander=False, type='full'):
-    # st.write(player_name1, player_name2)
-    player_name1_hea = player_name1
-    player_name1_tou = player_name1
-    
-    if type == 'heatmap':
-        df_hea = pd.read_pickle('grids/' + filename + '_' + str(num_x_cells_hea) + '_' + str(num_y_cells_hea) + '.pkl')
-        df_hea = df_hea.loc[df_hea['played_matches'] >= played_matches_threshold]
-        df_hea["player_name"] = df_hea["player_name"].apply(unidecode)
-        player_df = df_hea.loc[df_hea['player_name'].str.lower() == player_name1_hea.lower()]
-        if len(player_df) == 0:
-            alt_name = find_alt_name(name=player_name1_hea)
-            player_df = df_hea.loc[df_hea['player_name'].str.lower() == alt_name.lower()]
-            if len(player_df) == 0:
-                st.error(f"Player {player_name} not found!")
-            player_name1_hea = alt_name
-        if len(player_df)>1:
-            st.error("Player has more than one team")
-    if type == 'movement':
-        df_tou = pd.read_pickle('grids_movements/' + filename + '_' + str(num_x_cells_tou) + '_' + str(num_y_cells_tou) + '.pkl')
-        df_tou = df_tou.loc[df_tou['played_matches'] >= played_matches_threshold]
-        df_tou["player_name"] = df_tou["player_name"].apply(unidecode)
-        player_df = df_tou.loc[df_tou['player_name'].str.lower() == player_name.lower()]
-        if len(player_df) == 0:
-            alt_name = find_alt_name(player_name=player_name)
-            player_df = df_tou.loc[df_tou['player_name'].str.lower() == alt_name.lower()]
-            if len(player_df) == 0:
-                st.error(f"Player {player_name} not found!")
-            player_name1_tou = alt_name
-        if len(player_df)>1:
-            st.error("Player has more than one team")
-        
-    
-    
-
-    if not expander:
-        
-        player_df = df_hea.loc[df_hea['player_name'] == player_name1_hea]
-        if len(player_df)>1:
-            st.error("Player has more than one team")
-        else:
-            player_df = player_df.iloc[0]
-        player_id = player_df['player_id']
-        sim_mov = get_similarities(player_id=player_id, filename=filename)
-        sim_mov['player_name'] = sim_mov['player_name'].apply(unidecode)
-
-        player_df = df_tou.loc[df_tou['player_name'] == player_name1_tou]
-        if len(player_df)>1:
-            st.error("Player has more than one team")
-        else:
-            player_df = player_df.iloc[0]
-        player_id = player_df['player_id']
-        sim_tou = get_similarities_movements(player_id=player_id, filename=filename, num_x_cells=num_x_cells, num_y_cells=num_y_cells)
-        sim_tou['player_name'] = sim_tou['player_name'].apply(unidecode)
-
-        # st.write(sim_mov)
-        # st.write(sim_tou)
-
-        merged = sim_mov.merge(
-            sim_tou,
-            on='player_name',
-            suffixes=('_heatmap', '_movement')
-        )
-        merged['similarity_mixed'] = (merged['similarity_heatmap'] + merged['similarity_movement'])/2
-        merged = merged.sort_values(by=['similarity_mixed'], ascending=False).reset_index()
-        merged = merged.drop(columns=['index'])
-        # st.write(merged)
-        merged = merged.loc[merged['player_name'] == player_name2].iloc[0]
-        hea_sim = merged['similarity_heatmap']
-        tou_sim = merged['similarity_movement']
-        mix_sim = merged['similarity_mixed']
-        # st.write(merged)
-
-        left, center, right = st.columns(3)
-
-        with left:
-            # st.write(f"Heatmap Similarity: {hea_sim:.1%}")
-            st.markdown(
-                f"""
-                <div style="text-align: center;">
-                    <div style="font-size: 3rem; font-weight: 700; color: #1f77b4; line-height: 1;">
-                        {round(hea_sim*100, 2)}%
-                    </div>
-                    <div style="font-size: 0.9rem; color: gray; margin-top: 4px;">
-                        <b>Heatmap</b> Similarity
-                    </div>
-                """,
-                unsafe_allow_html=True
-            )
-        with center:
-            # st.write(f"Movement Similarity: {tou_sim:.1%}")
-            st.markdown(
-                f"""
-                <div style="text-align: center;">
-                    <div style="font-size: 3rem; font-weight: 700; color: #1f77b4; line-height: 1;">
-                        {round(tou_sim*100, 2)}%
-                    </div>
-                    <div style="font-size: 0.9rem; color: gray; margin-top: 4px;">
-                        <b>Movement</b> Similarity
-                    </div>
-                """,
-                unsafe_allow_html=True
-            )
-        with right:
-            # st.write(f"Heatmap Similarity: {mix_sim:.1%}")
-            st.markdown(
-                f"""
-                <div style="text-align: center;">
-                    <div style="font-size: 3rem; font-weight: 700; color: #ff2b2b; line-height: 1;">
-                        {round(mix_sim*100, 2)}%
-                    </div>
-                    <div style="font-size: 0.9rem; color: gray; margin-top: 4px;">
-                        <b>Total</b> Similarity
-                    </div>
-                """,
-                unsafe_allow_html=True
-            )
-        
-
-    if type=='full':
-        if not expander:
-            st.subheader("Heatmap Comparison")
-        compare_heatmaps(player_name1_hea, player_name2, df_hea, num_x_cells_hea, num_y_cells_hea, expander=expander)
-        if not expander:
-            st.subheader("Movements Comparison")
-        compare_movements(player_name1_tou, player_name2, df_tou, num_x_cells_tou, num_y_cells_tou, top=top, expander=expander)
-    elif type=='heatmap':
-        compare_heatmaps(player_name1_hea, player_name2, df_hea, num_x_cells_hea, num_y_cells_hea, expander=expander)
-    elif type=='movement':
-        compare_movements(player_name1_tou, player_name2, df_tou, num_x_cells_tou, num_y_cells_tou, top=top, expander=expander)
-        
+     
 def show_combined(player_name, filename, num_x_cells=5, num_y_cells=5, top=20):
     # st.write(player_name)
     df_hea = pd.read_pickle('grids/' + filename + '_30_30.pkl')
@@ -699,20 +569,24 @@ def show_combined(player_name, filename, num_x_cells=5, num_y_cells=5, top=20):
     df_43['player'] = df_43['player'].apply(unidecode)
     df_43['player_team'] = df_43['player'] + ' - ' + df_43['team']
     df_43 = df.sort_values(by=['player_team'])
+    
     # df_tou = pd.read_pickle('grids_movements/' + filename + '_' + str(num_x_cells) + '_' + str(num_y_cells) + '.pkl')
     # df_hea = df_hea.loc[df_hea['played_matches'] >= played_matches_threshold]
     # df_tou["player_name"] = df_tou["player_name"].apply(unidecode)
     # st.write(df_hea)
     # st.write(df_tou)
+    player, team = str.split(player_name, " - ")
+    
 
-    player_name_hea = player_name
-    player_name_43 = player_name
+    player_name_hea = player
+    player_name_43 = player
 
-    player_df = df_hea.loc[df_hea['player_name'].str.lower() == player_name.lower()]
-    # st.write(player_name)
+    player_df = df_hea.loc[df_hea['player_name'].str.lower() == player_name_hea.lower()]
+    # st.write(player_name_hea)
     # st.write(df_hea)
+    # st.write(player_df)
     if len(player_df) == 0:
-        alt_name = find_alt_name(player_name=player_name)
+        alt_name = find_alt_name(name=player_name_hea)
         player_df = df_hea.loc[df_hea['player_name'].str.lower() == alt_name.lower()]
         if len(player_df) == 0:
             st.error(f"Player {player_name} not found!")
@@ -722,39 +596,54 @@ def show_combined(player_name, filename, num_x_cells=5, num_y_cells=5, top=20):
         row = player_df.iloc[0]
     player_id = row['player_id']
     sim_mov = get_similarities(player_id=player_id, filename=filename)
+    # st.write(sim_mov)
 
 
-
-    player_df = df_43.loc[df_43['player'].str.lower() == player_name.lower()]
+    player_df = df_43.loc[df_43['player'].str.lower() == player_name_43.lower()]
     if len(player_df) == 0:
-        alt_name = find_alt_name(player_name=player_name)
+        alt_name = find_alt_name(name=player_name_43)
         player_df = df_43.loc[df_43['player'].str.lower() == alt_name.lower()]
         if len(player_df) == 0:
-            st.error(f"Player {player_name} not found!")
+            st.error(f"Player {player_name_43} not found!")
     if len(player_df)>1:
         st.error("Player has more than one team")
     else:
         row = player_df.iloc[0]
-    player_id = row['player_id']
-    sim_tou = get_similarities_movements(player_id=player_id, filename=filename, num_x_cells=num_x_cells, num_y_cells=num_y_cells)
+    # st.write(row)
+    df_standard = standardize_df(df_43, sofa_under=True, minutes=1000)
+    df_pca, cont_df, loadings = apply_pca(df_standard, sofa_under=True)
+    sim_df, sim_43 = get_distances(player_name_43, df_pca, sofa_under=True)
+    sim_43 = sim_43.reset_index(drop=True)
+    # st.write(sim_df_pos)
+    d50 = sim_43["distance"].median()
+    p = 2
+
+    sim_43["similarity"] = 100 / (1 + (sim_43["distance"] / d50) ** p)
+
+    # player_id = row['player_id']
+    # sim_tou = get_similarities_movements(player_id=player_id, filename=filename, num_x_cells=num_x_cells, num_y_cells=num_y_cells)
 
     # st.write(player_name_hea, player_name_tou)
-    # print(sim_mov.head())
-    # print(sim_tou.head())
+    sim_mov['player'] = sim_mov['player_name'].apply(unidecode)
+    # st.write(sim_mov.head())
+    # st.write(sim_43.head())
+    
 
     merged = sim_mov.merge(
-        sim_tou,
-        on=['player_name', 'team', 'league'],
-        suffixes=('_touch', '_movement')
+        sim_43,
+        on=['player'],
+        suffixes=('_movement', '_43to7')
     )
-    merged['similarity_mixed'] = (merged['similarity_touch'] + merged['similarity_movement'])/2
+    
+    merged['similarity_43to7'] = merged['similarity_43to7']/100
+    merged['similarity_mixed'] = (merged['similarity_movement'] + merged['similarity_43to7'])/2
     merged = merged.sort_values(by=['similarity_mixed'], ascending=False).reset_index()
     merged = merged.drop(columns=['index'])
-    merged = merged[['player_name', 'league', 'team', 'position', 'similarity_mixed', 'similarity_movement', 'similarity_touch', 'player_id_movement', 'player_id_touch', 'grid']]
+    merged = merged[['player', 'league', 'team_43to7', 'position_43to7', 'similarity_mixed', 'similarity_movement', 'similarity_43to7', 'player_id']]
     # st.write(merged)
 
     top10 = merged.iloc[1:11].reset_index(drop=True)
-    st.subheader(f"Similarity Top 10 - {player_name}")
+    st.subheader(f"Similarity Top 10 - {player}")
 
     col_left, col_right = st.columns(2)
 
@@ -762,23 +651,23 @@ def show_combined(player_name, filename, num_x_cells=5, num_y_cells=5, top=20):
         for i, row in top10.iloc[0:5].iterrows():
             with st.container(border=True):
                 # st.markdown(f"**#{i+1} — {row['player_name']}**")
-                st.markdown(f"**#{i+1} — {row['player_name']} - {row['team']}**")
-                # st.markdown(f"**#{i+1} — {row['player_name']} - {row['team']} - {row['position']}**")
+                # st.markdown(f"**#{i+1} — {row['player_name']} - {row['team']}**")
+                st.markdown(f"**#{i+1} — {row['player']} - {row['team_43to7']} - {row['position_43to7']}**")
                 st.progress(row['similarity_mixed'])
-                st.caption(f"**{row['similarity_mixed']:.1%}** ({row['similarity_movement']:.1%} Heatmaps, {row['similarity_touch']:.1%} Movements)")
+                st.caption(f"**{row['similarity_mixed']:.1%}** ({row['similarity_movement']:.1%} Heatmaps, {row['similarity_43to7']:.1%} Metrics)")
                 with st.expander("Compare players"):
-                    compare_players(player_name_hea, row['player_name'], filename=filename, num_x_cells_tou=num_x_cells, num_y_cells_tou=num_y_cells, top=top, expander=True)
+                    compare_players(player_name_hea, row['player'], filename=filename, num_x_cells_tou=num_x_cells, num_y_cells_tou=num_y_cells, top=top, sim_43=sim_43, df_43=df_43, expander=True)
 
     with col_right:
         for i, row in top10.iloc[5:10].iterrows():
             with st.container(border=True):
                 # st.markdown(f"**#{i+1} — {row['player_name']}**")
-                st.markdown(f"**#{i+1} — {row['player_name']} - {row['team']}**")
-                # st.markdown(f"**#{i+1} — {row['player_name']} - {row['team']} - {row['position']}**")
+                # st.markdown(f"**#{i+1} — {row['player_name']} - {row['team']}**")
+                st.markdown(f"**#{i+1} — {row['player']} - {row['team_43to7']} - {row['position_43to7']}**")
                 st.progress(row['similarity_mixed'])
-                st.caption(f"**{row['similarity_mixed']:.1%}** ({row['similarity_movement']:.1%} Heatmaps, {row['similarity_touch']:.1%} Movements)")
+                st.caption(f"**{row['similarity_mixed']:.1%}** ({row['similarity_movement']:.1%} Heatmaps, {row['similarity_43to7']:.1%} Metrics)")
                 with st.expander("Compare players"):
-                    compare_players(player_name_hea, row['player_name'], filename=filename, num_x_cells_tou=num_x_cells, num_y_cells_tou=num_y_cells, top=top, expander=True)
+                    compare_players(player_name_hea, row['player'], filename=filename, num_x_cells_tou=num_x_cells, num_y_cells_tou=num_y_cells, top=top, sim_43=sim_43, df_43=df_43, expander=True)
 
 def standardize_df(df, sofa_under=False, minutes=1000):
     if sofa_under:
@@ -1505,6 +1394,11 @@ def show_43to7(df, player_team):
     l_player_stats = compute_scores(df, l_player)
     r_player_stats = compute_scores(df, r_player)
 
+    # st.write(l_player)
+    # st.write(r_player)
+    # st.write(l_player_stats)
+    # st.write(r_player_stats)
+
     compare_radars(l_player_stats, r_player_stats)
 
     # compare_43to7(l_player=l_player, r_player=r_player, df_standard=df_standard, descriptions=descriptions)
@@ -1547,12 +1441,185 @@ def show_43to7(df, player_team):
                     # st.write("Closer Stats:")
                     # compare_43to7(l_player, row, df_standard, descriptions)
                     r_player_stats = compute_scores(df, row)
+
                                         
                     compare_radars(l_player_stats, r_player_stats)
     
     
     
+def compare_players(player_name1, player_name2, filename, sim_43=None, df_43=None, num_x_cells_hea=30, num_y_cells_hea=30, top=20, expander=False, type='full'):
+    # st.write(player_name1, player_name2)
+    if not expander:
+        player1, team1 = str.split(player_name1, " - ")
+        player2, team2 = str.split(player_name2, " - ")
+        player_name1_43 = player1
+        player_name1_hea = player1
+    else:
+
+        # player_name1_43 = player1
+        player_name1_43 = player_name1
+        player_name1_hea = player_name1
+        # player_name1_43 = player_name1
+
+    df_hea = pd.read_pickle('grids/' + filename + '_' + str(num_x_cells_hea) + '_' + str(num_y_cells_hea) + '.pkl')
+    df_hea = df_hea.loc[df_hea['played_matches'] >= played_matches_threshold]
+    df_hea["player_name"] = df_hea["player_name"].apply(unidecode)
+    player_df = df_hea.loc[df_hea['player_name'].str.lower() == player_name1_hea.lower()]
+    if len(player_df) == 0:
+        alt_name = find_alt_name(name=player_name1_hea)
+        player_df = df_hea.loc[df_hea['player_name'].str.lower() == alt_name.lower()]
+        if len(player_df) == 0:
+            st.error(f"Player {player_name} not found!")
+        player_name1_hea = alt_name
+    if len(player_df)>1:
+        st.error("Player has more than one team")
+        
     
+    if expander:
+        if not expander:
+            st.subheader("Heatmap Comparison")
+        compare_heatmaps(player_name1_hea, player_name2, df_hea, num_x_cells_hea, num_y_cells_hea, expander=expander)
+        if not expander:
+            st.subheader("Metrics Comparison")
+        l_player = sim_43.loc[sim_43['player'] == player_name1_43].iloc[0]
+        r_player = sim_43.loc[sim_43['player'] == player_name2].iloc[0]
+        l_stats = compute_scores(df_43, l_player)
+        r_stats = compute_scores(df_43, r_player)
+        # st.write(l_player)
+        # st.write(r_player)
+        compare_radars(l_stats, r_stats)
+    
+    else:
+        # st.write(player_name1_hea, player2)
+        player_df = df_hea.loc[df_hea['player_name'] == player_name1_hea]
+        if len(player_df)>1:
+            st.error("Player has more than one team")
+        else:
+            player_df = player_df.iloc[0]
+        player_id = player_df['player_id']
+        sim_mov = get_similarities(player_id=player_id, filename=filename)
+        sim_mov['player_name'] = sim_mov['player_name'].apply(unidecode)
+
+        df_43 = pd.read_csv('43to7/stats_sofa_under.csv')
+        df_43 = df_43.loc[df_43['position'] != 'GK']
+        df_43 = df_43.loc[df_43['minutes'] >= minutes_threshold]
+        df_43['player'] = df_43['player'].apply(unidecode)
+        df_43['player_team'] = df_43['player'] + ' - ' + df_43['team']
+        df_43 = df.sort_values(by=['player_team'])
+
+        player_df = df_43.loc[df_43['player'].str.lower() == player_name1_43.lower()]
+        if len(player_df) == 0:
+            alt_name = find_alt_name(name=player_name1_43)
+            player_df = df_43.loc[df_43['player'].str.lower() == alt_name.lower()]
+            if len(player_df) == 0:
+                st.error(f"Player {player_name1_43} not found!")
+        if len(player_df)>1:
+            st.error("Player has more than one team")
+        else:
+            row = player_df.iloc[0]
+        # st.write(row)
+        df_standard = standardize_df(df_43, sofa_under=True, minutes=1000)
+        df_pca, cont_df, loadings = apply_pca(df_standard, sofa_under=True)
+        sim_df, sim_43 = get_distances(player_name1_43, df_pca, sofa_under=True)
+        sim_43 = sim_43.reset_index(drop=True)
+        # st.write(sim_df_pos)
+        d50 = sim_43["distance"].median()
+        p = 2
+    
+        sim_43["similarity"] = 100 / (1 + (sim_43["distance"] / d50) ** p)
+    
+        # player_id = row['player_id']
+        # sim_tou = get_similarities_movements(player_id=player_id, filename=filename, num_x_cells=num_x_cells, num_y_cells=num_y_cells)
+    
+        # st.write(player_name_hea, player_name_tou)
+        sim_mov['player'] = sim_mov['player_name'].apply(unidecode)
+
+        # st.write(sim_mov)
+        # st.write(sim_tou)
+
+        merged = sim_mov.merge(
+            sim_43,
+            on=['player'],
+            suffixes=('_movement', '_43to7')
+        )
+        
+        merged['similarity_43to7'] = merged['similarity_43to7']/100
+        merged['similarity_mixed'] = (merged['similarity_movement'] + merged['similarity_43to7'])/2
+        merged = merged.sort_values(by=['similarity_mixed'], ascending=False).reset_index()
+        merged = merged.drop(columns=['index'])
+        merged = merged[['player', 'league', 'team_43to7', 'position_43to7', 'similarity_mixed', 'similarity_movement', 'similarity_43to7', 'player_id']]
+        # st.write(sim_mov)
+        # st.write(sim_43)
+        # st.write(merged)
+        merged = merged.loc[merged['player'] == player2].iloc[0]
+        hea_sim = merged['similarity_movement']
+        met_sim = merged['similarity_43to7']
+        mix_sim = merged['similarity_mixed']
+        # st.write(merged)
+
+        left, center, right = st.columns(3)
+
+        with left:
+            # st.write(f"Heatmap Similarity: {hea_sim:.1%}")
+            st.markdown(
+                f"""
+                <div style="text-align: center;">
+                    <div style="font-size: 3rem; font-weight: 700; color: #1f77b4; line-height: 1;">
+                        {round(hea_sim*100, 2)}%
+                    </div>
+                    <div style="font-size: 0.9rem; color: gray; margin-top: 4px;">
+                        <b>Heatmap</b> Similarity
+                    </div>
+                """,
+                unsafe_allow_html=True
+            )
+        with center:
+            # st.write(f"Movement Similarity: {tou_sim:.1%}")
+            st.markdown(
+                f"""
+                <div style="text-align: center;">
+                    <div style="font-size: 3rem; font-weight: 700; color: #1f77b4; line-height: 1;">
+                        {round(met_sim*100, 2)}%
+                    </div>
+                    <div style="font-size: 0.9rem; color: gray; margin-top: 4px;">
+                        <b>Movement</b> Similarity
+                    </div>
+                """,
+                unsafe_allow_html=True
+            )
+        with right:
+            # st.write(f"Heatmap Similarity: {mix_sim:.1%}")
+            st.markdown(
+                f"""
+                <div style="text-align: center;">
+                    <div style="font-size: 3rem; font-weight: 700; color: #ff2b2b; line-height: 1;">
+                        {round(mix_sim*100, 2)}%
+                    </div>
+                    <div style="font-size: 0.9rem; color: gray; margin-top: 4px;">
+                        <b>Total</b> Similarity
+                    </div>
+                """,
+                unsafe_allow_html=True
+            )
+        
+        if not expander:
+            st.subheader("Heatmap Comparison")
+        compare_heatmaps(player_name1_hea, player2, df_hea, num_x_cells_hea, num_y_cells_hea, expander=expander)
+        if not expander:
+            st.subheader("Metrics Comparison")
+        l_player = sim_43.loc[sim_43['player'] == player_name1_hea].iloc[0]
+        r_player = sim_43.loc[sim_43['player'] == player2].iloc[0]
+        l_stats = compute_scores(df_43, l_player)
+        r_stats = compute_scores(df_43, r_player)
+        # st.write(l_player)
+        # st.write(r_player)
+        compare_radars(l_stats, r_stats)
+        
+
+   
+    
+    
+    # compare_movements(player_name1_tou, player_name2, df_tou, num_x_cells_tou, num_y_cells_tou, top=top, expander=expander)
     
 
     
@@ -1622,29 +1689,13 @@ if player_name:
     elif sim_choice == 'Combined Similarity':
         show_combined(player_name, filename='top5_2526')
     elif sim_choice == 'Compare Players':
-        filename = 'top5_2526'
-        df = pd.read_pickle('grids/' + filename + '_30_30.pkl')
-        df = df.loc[df['played_matches'] >= played_matches_threshold]
-        df = df.sort_values(by=['player_name'])
-        df["player_name"] = df["player_name"].apply(unidecode)
         player_name_compare = st.selectbox(
-            "Search for the Comparison Player",
-            options=df['player_name'],
+            "Search for a Comparison Player",
+            # options=df['player_name'],
+            options=df['player_team'],
             index=None,
             placeholder="Type a Player Name"
         )
         if player_name_compare:
-            wide_movements = st.checkbox('Wider Movements')
-            more_movements = st.checkbox('Show More Movements')
-            if not wide_movements:
-                num_x_cells = 7
-                num_y_cells = 7
-            else:
-                num_x_cells = 5
-                num_y_cells = 5
-            if not more_movements:
-                top = 10
-            else:
-                top = 20
             # compare_players(player_name, player_name_compare)
-            compare_players(player_name, player_name_compare, filename=filename, num_x_cells_tou=num_x_cells, num_y_cells_tou=num_y_cells, top=top, expander=False)
+            compare_players(player_name, player_name_compare, filename='top5_2526', expander=False)
