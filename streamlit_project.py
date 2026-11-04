@@ -401,7 +401,8 @@ def show_heatmaps(player_team, filename='top8_2526', num_x_cells=30, num_y_cells
                 st.progress(row['similarity'])
                 st.caption(f"**{row['similarity']:.1%}**")
                 with st.expander("Compare players"):
-                    compare_players(player_name, row['player_name'], filename=filename, expander=True, type='heatmap')
+                    compare_heatmaps(player_name, row['player_name'], df, num_x_cells, num_y_cells, expander=True)
+                    # compare_players(player_name, row['player_name'], filename=filename, expander=True, type='heatmap')
 
     with col_right:
         for i, row in top10.iloc[5:10].iterrows():
@@ -411,7 +412,8 @@ def show_heatmaps(player_team, filename='top8_2526', num_x_cells=30, num_y_cells
                 st.progress(row['similarity'])
                 st.caption(f"**{row['similarity']:.1%}**")
                 with st.expander("Compare players"):
-                    compare_players(player_name, row['player_name'], filename=filename, expander=True, type='heatmap')
+                    compare_heatmaps(player_name, row['player_name'], df, num_x_cells, num_y_cells, expander=True)
+                    # compare_players(player_name, row['player_name'], filename=filename, expander=True, type='heatmap')
                 
 
 def show_movements(num_x_cells=5, num_y_cells=5, top=20, filename='engitager_2526', player_name=None):
@@ -656,7 +658,7 @@ def show_combined(player_name, filename, num_x_cells=5, num_y_cells=5, top=20):
                 st.progress(row['similarity_mixed'])
                 st.caption(f"**{row['similarity_mixed']:.1%}** ({row['similarity_movement']:.1%} Heatmaps, {row['similarity_43to7']:.1%} Metrics)")
                 with st.expander("Compare players"):
-                    compare_players(player_name_hea, row['player'], filename=filename, num_x_cells_tou=num_x_cells, num_y_cells_tou=num_y_cells, top=top, sim_43=sim_43, df_43=df_43, expander=True)
+                    compare_players(player_name_hea, row['player'], filename=filename, top=top, sim_43=sim_43, df_43=df_43, expander=True)
 
     with col_right:
         for i, row in top10.iloc[5:10].iterrows():
@@ -667,7 +669,7 @@ def show_combined(player_name, filename, num_x_cells=5, num_y_cells=5, top=20):
                 st.progress(row['similarity_mixed'])
                 st.caption(f"**{row['similarity_mixed']:.1%}** ({row['similarity_movement']:.1%} Heatmaps, {row['similarity_43to7']:.1%} Metrics)")
                 with st.expander("Compare players"):
-                    compare_players(player_name_hea, row['player'], filename=filename, num_x_cells_tou=num_x_cells, num_y_cells_tou=num_y_cells, top=top, sim_43=sim_43, df_43=df_43, expander=True)
+                    compare_players(player_name_hea, row['player'], filename=filename, top=top, sim_43=sim_43, df_43=df_43, expander=True)
 
 def standardize_df(df, sofa_under=False, minutes=1000):
     if sofa_under:
@@ -1460,6 +1462,7 @@ def compare_players(player_name1, player_name2, filename, sim_43=None, df_43=Non
         player_name1_43 = player_name1
         player_name1_hea = player_name1
         # player_name1_43 = player_name1
+        # st.write(player_name1_43, player_name1_hea)
 
     df_hea = pd.read_pickle('grids/' + filename + '_' + str(num_x_cells_hea) + '_' + str(num_y_cells_hea) + '.pkl')
     df_hea = df_hea.loc[df_hea['played_matches'] >= played_matches_threshold]
@@ -1626,11 +1629,11 @@ def compare_players(player_name1, player_name2, filename, sim_43=None, df_43=Non
     
     
 
-st.title("Player Similarity")
+st.title("43to7 - Metrics and Heatmaps Similarity")
 st.subheader("Search for a player in order to find the most similar players!")
-st.write("Last Update: September 28th, 2026")
+st.write("Last Update: November 4th, 2026")
 
-st.info(f"This project runs a similarity algorithm, based on player heatmaps and touches. Note therefore that the similarity is based only on player and ball movement.  \nData are taken from the 2025/26 season of the top 5 European Leagues (England, Spain, Italy, Germany, France).   \nComparisons are made between players with at least {played_matches_threshold} matches played during the season in the domestic league.")
+st.info(f"This project runs a similarity algorithm, based on player heatmaps and metrics. \nData are taken from the 2025/26 season of the top 5 European Leagues (England, Spain, Italy, Germany, France).   \nComparisons are made between players with at least {minutes_threshold} minutes played during the season in the domestic league.")
 
 # df = pd.read_pickle('grids/top5_2526_30_30.pkl')
 # df = pd.read_pickle('grids/bpl_2526_30_30.pkl')
