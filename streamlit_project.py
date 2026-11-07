@@ -23,6 +23,8 @@ from matplotlib.lines import Line2D
 
 played_matches_threshold = 10
 minutes_threshold = 1000
+width_plots = 15
+height_plots = 8
 
 st.set_page_config(layout="wide")
 
@@ -126,7 +128,7 @@ def plot_players(player_id, filename='top8_2526', num_x_cells=30, num_y_cells=30
     # pitch = VerticalPitch(pitch_type='opta', line_color='black', pitch_color='white', linewidth=1.5)
     pitch = VerticalPitch(pitch_type='opta', line_color='white', pitch_color='none', linewidth=1.5)
 
-    fig, axes = plt.subplots(1, 3, figsize=(15, 6))
+    fig, axes = plt.subplots(1, 3, figsize=(width_plots, height_plots))
     # fig.subplots_adjust(
     #         # wspace=0.85,
     #         bottom=0.25,
@@ -1737,7 +1739,7 @@ def plot_three_radars(player_stats, top10, df):
     # st.write(stats_1, stats_2, stats_3)
     fig, axes = plt.subplots(
         1, 3,
-        figsize=(15, 6),
+        figsize=(width_plots, height_plots),
         subplot_kw=dict(polar=True)
     )
 
