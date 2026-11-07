@@ -346,8 +346,9 @@ def get_similarities_movements(player_id, filename='seriea_2526', num_x_cells=5,
     result_df = result_df.sort_values(by=['similarity'], ascending=False)
     return result_df
 
-def show_heatmaps(player_team, filename='top8_2526', num_x_cells=30, num_y_cells=30):
+def show_heatmaps(player_team, filename='top5_2526', num_x_cells=30, num_y_cells=30):
     df = pd.read_pickle('grids/' + filename +'_' + str(num_x_cells) + '_' + str(num_y_cells) + '.pkl')
+    # st.write(df)
     df = df.loc[df['played_matches'] >= played_matches_threshold]
     df = df.sort_values(by=['player_name'])
     df["player_name"] = df["player_name"].apply(unidecode)
@@ -567,7 +568,8 @@ def show_combined(player_name, filename, num_x_cells=5, num_y_cells=5, top=20):
 
     df_43 = pd.read_csv('43to7/stats_sofa_under.csv')
     df_43 = df_43.loc[df_43['position'] != 'GK']
-    df_43 = df_43.loc[df_43['minutes'] >= minutes_threshold]
+    # df_43 = df_43.loc[df_43['minutes'] >= minutes_threshold]
+    df_43 = df_43.loc[df_43['games'] >= played_matches_threshold]
     df_43['player'] = df_43['player'].apply(unidecode)
     df_43['player_team'] = df_43['player'] + ' - ' + df_43['team']
     df_43 = df.sort_values(by=['player_team'])
@@ -674,7 +676,8 @@ def show_combined(player_name, filename, num_x_cells=5, num_y_cells=5, top=20):
 def standardize_df(df, sofa_under=False, minutes=1000):
     if sofa_under:
         df = df.loc[df['position'] != 'GK']
-        df = df.loc[df['minutes'] >= 1000]
+        df = df.loc[df['games'] >= played_matches_threshold]
+        # df = df.loc[df['minutes'] >= 1000]
     else:
         df = df.loc[df['minutes'] >= minutes]
         df = df.loc[(df['pos'] != 'GK') & (df['pos'] != 'GK S')]
@@ -685,6 +688,8 @@ def standardize_df(df, sofa_under=False, minutes=1000):
         data_df = df.drop(columns=['player', 'league', 'team', 'position', 'games', 'minutes', 'nineties', 'player_team'])
     else:
         data_df = df.drop(columns=['player', 'player_norm', 'team', 'pos', 'minutes', 'ninety_s', 'games'])
+    if 'player_name' in data_df.columns:
+        data_df = data_df.drop(columns=['player_name'])
     standard_df = scaler.fit_transform(data_df)
     standard_df = pd.DataFrame(standard_df, columns=data_df.columns)
     if sofa_under:
@@ -780,7 +785,7 @@ def apply_pca(df_standard, sofa_under=False):
     )
     return data_pca, cont_df, loading_matrix
 
-def get_distances(player_name, df_pca, sofa_under=False):
+def get_distances(player_name, df_pca, sofa_under=False, expander=True):
     
     if sofa_under:
         df_pca['player'] = df_pca['player'].apply(unidecode)
@@ -838,24 +843,27 @@ def get_distances(player_name, df_pca, sofa_under=False):
         search_pos = search_row['position'].iloc[0]
         # print(search_pos, type(search_pos))
         # dist_df_pos = dist_df.loc[dist_df['position'] == search_pos]
-        comparison_groups = {
-                'DC': ['DC'],
-                'DL': ['DL', 'DML'],
-                'DR': ['DR', 'DMR'],
-                'DMC': ['DMC', 'MC'],
-                'DML': ['DML', 'DL', 'ML'],
-                'DMR': ['DMR', 'DR', 'MR'],
-                'MC': ['MC', 'DMC', 'AMC'],
-                'ML': ['ML', 'DML', 'AML'],
-                'MR': ['MR', 'DMR', 'AMR'],
-                'AMC': ['AMC', 'MC'],
-                'FR': ['FR', 'MR'],
-                'FL': ['FL', 'ML'],
-                'FW': ['FW', 'AMC']
-            }
-        
-        compare_positions = comparison_groups[search_pos]
-        dist_df_pos = dist_df.loc[dist_df['position'].isin(compare_positions)]
+        if expander:
+            comparison_groups = {
+                    'DC': ['DC'],
+                    'DL': ['DL', 'DML'],
+                    'DR': ['DR', 'DMR'],
+                    'DMC': ['DMC', 'MC'],
+                    'DML': ['DML', 'DL', 'ML'],
+                    'DMR': ['DMR', 'DR', 'MR'],
+                    'MC': ['MC', 'DMC', 'AMC'],
+                    'ML': ['ML', 'DML', 'AML'],
+                    'MR': ['MR', 'DMR', 'AMR'],
+                    'AMC': ['AMC', 'MC'],
+                    'FR': ['FR', 'MR'],
+                    'FL': ['FL', 'ML'],
+                    'FW': ['FW', 'AMC']
+                }
+            
+            compare_positions = comparison_groups[search_pos]
+            dist_df_pos = dist_df.loc[dist_df['position'].isin(compare_positions)]
+        else:
+            dist_df_pos = dist_df
         dist_df_pos['rank_distance'] = dist_df_pos['distance'].rank(method='min')
         dist_df_pos['rank_cosine_similarity'] = dist_df_pos['cosine_similarity'].rank(ascending=False, method='min')
         dist_df_pos['rank_distance'] = dist_df_pos['rank_distance'].astype(int)
@@ -1505,7 +1513,8 @@ def compare_players(player_name1, player_name2, filename, sim_43=None, df_43=Non
 
         df_43 = pd.read_csv('43to7/stats_sofa_under.csv')
         df_43 = df_43.loc[df_43['position'] != 'GK']
-        df_43 = df_43.loc[df_43['minutes'] >= minutes_threshold]
+        df_43 = df_43.loc[df_43['games'] >= played_matches_threshold]
+        # df_43 = df_43.loc[df_43['minutes'] >= minutes_threshold]
         df_43['player'] = df_43['player'].apply(unidecode)
         df_43['player_team'] = df_43['player'] + ' - ' + df_43['team']
         df_43 = df.sort_values(by=['player_team'])
@@ -1523,7 +1532,7 @@ def compare_players(player_name1, player_name2, filename, sim_43=None, df_43=Non
         # st.write(row)
         df_standard = standardize_df(df_43, sofa_under=True, minutes=1000)
         df_pca, cont_df, loadings = apply_pca(df_standard, sofa_under=True)
-        sim_df, sim_43 = get_distances(player_name1_43, df_pca, sofa_under=True)
+        sim_df, sim_43 = get_distances(player_name1_43, df_pca, sofa_under=True, expander=False)
         sim_43 = sim_43.reset_index(drop=True)
         # st.write(sim_df_pos)
         d50 = sim_43["distance"].median()
@@ -1585,7 +1594,7 @@ def compare_players(player_name1, player_name2, filename, sim_43=None, df_43=Non
                         {round(met_sim*100, 2)}%
                     </div>
                     <div style="font-size: 0.9rem; color: gray; margin-top: 4px;">
-                        <b>Movement</b> Similarity
+                        <b>Metrics</b> Similarity
                     </div>
                 """,
                 unsafe_allow_html=True
@@ -1631,9 +1640,9 @@ def compare_players(player_name1, player_name2, filename, sim_43=None, df_43=Non
 
 st.title("43to7 - Metrics and Heatmaps Similarity")
 st.subheader("Search for a player in order to find the most similar players!")
-st.write("Last Update: November 4th, 2026")
+st.write("Last Update: November 7th, 2026")
 
-st.info(f"This project runs a similarity algorithm, based on player heatmaps and metrics. \nData are taken from the 2025/26 season of the top 5 European Leagues (England, Spain, Italy, Germany, France).   \nComparisons are made between players with at least {minutes_threshold} minutes played during the season in the domestic league.")
+st.info(f"This project runs a similarity algorithm, based on player heatmaps and metrics. \nData are taken from the 2025/26 season of the top 5 European Leagues (England, Spain, Italy, Germany, France).   \nComparisons are made between players with at least {played_matches_threshold} matches played during the season in the domestic league.")
 
 # df = pd.read_pickle('grids/top5_2526_30_30.pkl')
 # df = pd.read_pickle('grids/bpl_2526_30_30.pkl')
@@ -1644,7 +1653,8 @@ st.info(f"This project runs a similarity algorithm, based on player heatmaps and
 
 df = pd.read_csv('43to7/stats_sofa_under.csv')
 df = df.loc[df['position'] != 'GK']
-df = df.loc[df['minutes'] >= minutes_threshold]
+df = df.loc[df['games'] >= played_matches_threshold]
+# df = df.loc[df['minutes'] >= minutes_threshold]
 df['player'] = df['player'].apply(unidecode)
 df['player_team'] = df['player'] + ' - ' + df['team']
 df = df.sort_values(by=['player_team'])
@@ -1692,10 +1702,21 @@ if player_name:
     elif sim_choice == 'Combined Similarity':
         show_combined(player_name, filename='top5_2526')
     elif sim_choice == 'Compare Players':
+        pickle = pd.read_pickle('grids/top5_2526_30_30.pkl')
+        pickle = pickle.loc[pickle['played_matches'] >= played_matches_threshold]
+        pickle = pickle.sort_values(by=['player_name'])
+        pickle["player_name"] = pickle["player_name"].apply(unidecode)
+        df['player_name'] = df['player_team'].str.split(' - ').str[0]
+        df_merged = pickle.merge(
+            df,
+            on=['player_name'],
+            suffixes=('_movement', '_43to7')
+        )
+        # st.write(df_merged)
         player_name_compare = st.selectbox(
             "Search for a Comparison Player",
             # options=df['player_name'],
-            options=df['player_team'],
+            options=df_merged['player_team'],
             index=None,
             placeholder="Type a Player Name"
         )
