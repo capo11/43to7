@@ -126,7 +126,12 @@ def plot_players(player_id, filename='top8_2526', num_x_cells=30, num_y_cells=30
     # pitch = VerticalPitch(pitch_type='opta', line_color='black', pitch_color='white', linewidth=1.5)
     pitch = VerticalPitch(pitch_type='opta', line_color='white', pitch_color='none', linewidth=1.5)
 
-    fig, axes = plt.subplots(1, 3, figsize=(15, 9))
+    fig, axes = plt.subplots(1, 3, figsize=(15, 6))
+    # fig.subplots_adjust(
+    #         # wspace=0.85,
+    #         bottom=0.25,
+    #         top=0.85
+    #     )
 
     fig.patch.set_alpha(0)
     for ax in axes:
@@ -1136,195 +1141,616 @@ def compare_radars(l_stats, r_stats):
         int(r_stats['shooting'])
     ]
 
-    # =========================================================
-    # CALCOLO DEI PARAMETRI DA SPOSTARE
-    # =========================================================
-
-    threshold = 5
-
-    params_offset = []
-
-    for l_val, r_val in zip(l_values, r_values):
-
-        difference = abs(l_val - r_val)
-
-        if difference <= threshold:
-            params_offset.append(True)
-        else:
-            params_offset.append(False)
-
-    # =========================================================
-    # SETUP PIZZA
-    # =========================================================
-
-    pizza = PyPizza(
-        params=params,
-        background_color='none',       # SFONDO TRASPARENTE
-        straight_line_color='white',
-        straight_line_lw=1,
-        last_circle_lw=0,
-        other_circle_color='white',
-        other_circle_ls='-',
-        other_circle_lw=1
+    N = len(params)
+    angles = np.linspace(0, 2 * np.pi, N, endpoint=False).tolist()
+    l_values += l_values[:1]
+    r_values += r_values[:1]
+    angles += angles[:1]
+    fig, ax = plt.subplots(
+        figsize=(5, 5),
+        subplot_kw=dict(polar=True)
     )
 
-    # =========================================================
-    # PRIMO GIOCATORE
-    # =========================================================
+    # Primo giocatore
+    ax.plot(
+        angles, r_values,
+        linewidth=2,
+        label='Player 1',
+        color='#277DA1' 
+    )
+    ax.fill(angles, r_values, color='#277DA1', alpha=0.15)
 
-    fig, ax = pizza.make_pizza(
-        figsize=(8, 8),
+    # Secondo giocatore
+    ax.plot(
+        angles, l_values,
+        linewidth=2,
+        label='Player 2',
+        color='#E76F51'
+    )
+    ax.fill(angles, l_values, color='#E76F51', alpha=0.15)
 
-        values=l_values,
+    # Etichette
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(params, color='white', fontsize=11)
 
-        kwargs_values=dict(
-            color='#FFFFFF',
-            fontsize=9,
-            bbox={
-                'edgecolor': '#034694',
-                'facecolor': '#034694',
-                'boxstyle': 'round, pad=.2',
-                'lw': 1
-            }
-        ),
+    # Scala 0-100
+    ax.set_ylim(0, 100)
+    ax.set_yticks([])
+    ax.set_yticklabels([], fontsize=8)
 
-        kwargs_slices=dict(
-            facecolor='#034694',
-            edgecolor='#034694',
-            linewidth=1,
-            alpha=0.25                 # PIÙ TRASPARENTE
-        ),
+    ax.grid(alpha=0.3)
 
-        kwargs_params=dict(
-            color='#FFFFFF',
-            fontsize=10,
-            fontproperties='monospace'
+    ax.spines['polar'].set_visible(False)
+    ax.tick_params(axis='x', pad=12)
+
+    
+    
+
+    color_1 = '#E76F51'
+    color_2 = '#277DA1'
+
+    base_offset = 10
+    extra_offset = 8
+    threshold = 15
+
+    for angle, val1, val2 in zip(
+        angles[:-1], l_values[:-1], r_values[:-1]
+    ):
+        distance = abs(val1 - val2)
+
+        offset = base_offset + max(
+            0, extra_offset * (1 - distance / threshold)
         )
-    )
 
-    # =========================================================
-    # SECONDO GIOCATORE
-    # =========================================================
+        # Direzione radiale
+        dx = np.cos(angle)
+        dy = np.sin(angle)
 
-    pizza.make_pizza(
-        values=r_values,
+        # Direzione tangenziale
+        tx = -np.sin(angle)
+        ty = np.cos(angle)
 
-        kwargs_values=dict(
-            color='#FFFFFF',
+        # Player 1: spostamento radiale + tangenziale
+        ax.annotate(
+            str(val1),
+            xy=(angle, val1),
+            xytext=(
+                dx * 4 + tx * offset,
+                dy * 4 + ty * offset
+            ),
+            textcoords='offset points',
+            color='white',
             fontsize=9,
-            bbox={
-                'edgecolor': '#FF0000',
-                'facecolor': '#FF0000',
-                'boxstyle': 'round, pad=.2',
-                'lw': 1
-            }
-        ),
+            ha='center',
+            va='center',
+            bbox=dict(
+                boxstyle='round,pad=0.3',
+                facecolor=color_1,
+                edgecolor='none'
+            ),
+            zorder=10
+        )
 
-        kwargs_slices=dict(
-            facecolor='#FF0000',
-            edgecolor='#FF0000',
-            linewidth=1,
-            alpha=0.25                 # PIÙ TRASPARENTE
-        ),
+        # Player 2: spostamento opposto
+        ax.annotate(
+            str(val2),
+            xy=(angle, val2),
+            xytext=(
+                dx * 4 - tx * offset,
+                dy * 4 - ty * offset
+            ),
+            textcoords='offset points',
+            color='white',
+            fontsize=9,
+            ha='center',
+            va='center',
+            bbox=dict(
+                boxstyle='round,pad=0.3',
+                facecolor=color_2,
+                edgecolor='none'
+            ),
+            zorder=10
+        )
 
-        kwargs_params=dict(
-            color='#FFFFFF',
-            fontsize=10,
-            fontproperties='monospace'
-        ),
 
-        ax=ax
-    )
 
-    # =========================================================
-    # SPOSTA LE ETICHETTE DEI VALORI CHE SI SOVRAPPONGONO
-    # =========================================================
-
-    pizza.adjust_texts(
-        params_offset=params_offset,
-        offset=-0.17
-    )
-
-    # =========================================================
-    # AVVICINA DEFENSE E POSSESSION AL GRAFICO
-    # =========================================================
-
-    # Le label dei parametri sono contenute in ax.texts.
-    # L'ordine segue quello di params:
-    #
-    # 0 = Defense
-    # 1 = Creation
-    # 2 = Possession
-    # 3 = Shooting
-
-    param_texts = ax.texts[-4:]
-
-    # Defense
-    x, y = param_texts[0].get_position()
-    param_texts[0].set_position((x, y - 0.08))
-
-    # Possession
-    x, y = param_texts[2].get_position()
-    param_texts[2].set_position((x, y + 0.08))
-
-    # =========================================================
-    # LEGENDA
-    # =========================================================
-
+    # Legenda e titolo
+    # plt.title('Player Comparison', color='white', size=15, pad=25)
+    # plt.legend(loc='upper right', bbox_to_anchor=(1.25, 1.1))
     legend = ax.legend(
         handles=[
             plt.Line2D(
                 [0], [0],
-                color='#034694',
+                color='#E76F51',
                 lw=3,
                 label=l_stats['player']
             ),
             plt.Line2D(
                 [0], [0],
-                color='#FF0000',
+                color='#277DA1',
                 lw=3,
                 label=r_stats['player']
             )
         ],
         loc='lower center',
-        bbox_to_anchor=(0.5, -0.12),
+        bbox_to_anchor=(0.5, -0.22),
         ncol=2,
         frameon=False,
         fontsize=10
     )
-
-    # Colore del testo della legenda
     for text in legend.get_texts():
-        text.set_color('white')
-
-    # =========================================================
-    # MARGINI
-    # =========================================================
-
-    fig.subplots_adjust(
-        top=0.9,
-        bottom=0.15,
-        left=0.15,
-        right=0.85
-    )
-
-    # =========================================================
-    # SFONDO FIGURA TRASPARENTE
-    # =========================================================
+            text.set_color('white')
 
     fig.patch.set_alpha(0)
     ax.patch.set_alpha(0)
+    st.pyplot(fig, transparent=True)
+
 
     # =========================================================
-    # STREAMLIT
+    # CALCOLO DEI PARAMETRI DA SPOSTARE
     # =========================================================
 
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", transparent=True, dpi=300)
-    st.image(buf)
+    # threshold = 5
 
+    # params_offset = []
+
+    # for l_val, r_val in zip(l_values, r_values):
+
+    #     difference = abs(l_val - r_val)
+
+    #     if difference <= threshold:
+    #         params_offset.append(True)
+    #     else:
+    #         params_offset.append(False)
+
+    # # =========================================================
+    # # SETUP PIZZA
+    # # =========================================================
+
+    # pizza = PyPizza(
+    #     params=params,
+    #     background_color='none',       # SFONDO TRASPARENTE
+    #     straight_line_color='white',
+    #     straight_line_lw=1,
+    #     last_circle_lw=0,
+    #     other_circle_color='white',
+    #     other_circle_ls='-',
+    #     other_circle_lw=1
+    # )
+
+    # # =========================================================
+    # # PRIMO GIOCATORE
+    # # =========================================================
+
+    # fig, ax = pizza.make_pizza(
+    #     figsize=(8, 8),
+
+    #     values=l_values,
+
+    #     kwargs_values=dict(
+    #         color='#FFFFFF',
+    #         fontsize=9,
+    #         bbox={
+    #             'edgecolor': '#034694',
+    #             'facecolor': '#034694',
+    #             'boxstyle': 'round, pad=.2',
+    #             'lw': 1
+    #         }
+    #     ),
+
+    #     kwargs_slices=dict(
+    #         facecolor='#034694',
+    #         edgecolor='#034694',
+    #         linewidth=1,
+    #         alpha=0.25                 # PIÙ TRASPARENTE
+    #     ),
+
+    #     kwargs_params=dict(
+    #         color='#FFFFFF',
+    #         fontsize=10,
+    #         fontproperties='monospace'
+    #     )
+    # )
+
+    # # =========================================================
+    # # SECONDO GIOCATORE
+    # # =========================================================
+
+    # pizza.make_pizza(
+    #     values=r_values,
+
+    #     kwargs_values=dict(
+    #         color='#FFFFFF',
+    #         fontsize=9,
+    #         bbox={
+    #             'edgecolor': '#FF0000',
+    #             'facecolor': '#FF0000',
+    #             'boxstyle': 'round, pad=.2',
+    #             'lw': 1
+    #         }
+    #     ),
+
+    #     kwargs_slices=dict(
+    #         facecolor='#FF0000',
+    #         edgecolor='#FF0000',
+    #         linewidth=1,
+    #         alpha=0.25                 # PIÙ TRASPARENTE
+    #     ),
+
+    #     kwargs_params=dict(
+    #         color='#FFFFFF',
+    #         fontsize=10,
+    #         fontproperties='monospace'
+    #     ),
+
+    #     ax=ax
+    # )
+
+    # # =========================================================
+    # # SPOSTA LE ETICHETTE DEI VALORI CHE SI SOVRAPPONGONO
+    # # =========================================================
+
+    # pizza.adjust_texts(
+    #     params_offset=params_offset,
+    #     offset=-0.17
+    # )
+
+    # # =========================================================
+    # # AVVICINA DEFENSE E POSSESSION AL GRAFICO
+    # # =========================================================
+
+    # # Le label dei parametri sono contenute in ax.texts.
+    # # L'ordine segue quello di params:
+    # #
+    # # 0 = Defense
+    # # 1 = Creation
+    # # 2 = Possession
+    # # 3 = Shooting
+
+    # param_texts = ax.texts[-4:]
+
+    # # Defense
+    # x, y = param_texts[0].get_position()
+    # param_texts[0].set_position((x, y - 0.08))
+
+    # # Possession
+    # x, y = param_texts[2].get_position()
+    # param_texts[2].set_position((x, y + 0.08))
+
+    # # =========================================================
+    # # LEGENDA
+    # # =========================================================
+
+    # legend = ax.legend(
+    #     handles=[
+    #         plt.Line2D(
+    #             [0], [0],
+    #             color='#034694',
+    #             lw=3,
+    #             label=l_stats['player']
+    #         ),
+    #         plt.Line2D(
+    #             [0], [0],
+    #             color='#FF0000',
+    #             lw=3,
+    #             label=r_stats['player']
+    #         )
+    #     ],
+    #     loc='lower center',
+    #     bbox_to_anchor=(0.5, -0.12),
+    #     ncol=2,
+    #     frameon=False,
+    #     fontsize=10
+    # )
+
+    # # Colore del testo della legenda
+    # for text in legend.get_texts():
+    #     text.set_color('white')
+
+    # # =========================================================
+    # # MARGINI
+    # # =========================================================
+
+    # fig.subplots_adjust(
+    #     top=0.9,
+    #     bottom=0.15,
+    #     left=0.15,
+    #     right=0.85
+    # )
+
+    # # =========================================================
+    # # SFONDO FIGURA TRASPARENTE
+    # # =========================================================
+
+    # fig.patch.set_alpha(0)
+    # ax.patch.set_alpha(0)
+
+    # # =========================================================
+    # # STREAMLIT
+    # # =========================================================
+
+    # buf = io.BytesIO()
+    # fig.savefig(buf, format="png", transparent=True, dpi=300)
+    # st.image(buf)
+
+
+def compare_radars_ax(ax, l_stats, r_stats, title):
+
+    params = ['Defense', 'Creation', 'Possession', 'Shooting']
+
+    l_values = [
+        int(l_stats['defense']),
+        int(l_stats['creation']),
+        int(l_stats['possession']),
+        int(l_stats['shooting'])
+    ]
+
+    r_values = [
+        int(r_stats['defense']),
+        int(r_stats['creation']),
+        int(r_stats['possession']),
+        int(r_stats['shooting'])
+    ]
+
+    N = len(params)
+    angles = np.linspace(0, 2 * np.pi, N, endpoint=False).tolist()
+    l_values += l_values[:1]
+    r_values += r_values[:1]
+    angles += angles[:1]
+
+    # Primo giocatore
+    ax.plot(
+        angles, r_values,
+        linewidth=2,
+        label='Player 1',
+        color='#277DA1' 
+    )
+    ax.fill(angles, r_values, color='#277DA1', alpha=0.15)
+
+    # Secondo giocatore
+    ax.plot(
+        angles, l_values,
+        linewidth=2,
+        label='Player 2',
+        color='#E76F51'
+    )
+    ax.fill(angles, l_values, color='#E76F51', alpha=0.15)
+
+    # Etichette
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(params, color='white', fontsize=11)
+
+    # Scala 0-100
+    ax.set_ylim(0, 100)
+    ax.set_yticks([])
+    ax.set_yticklabels([], fontsize=8)
+
+    ax.grid(alpha=0.3)
+
+    ax.spines['polar'].set_visible(False)
+    ax.tick_params(axis='x', pad=12)
 
     
+    
+
+    color_1 = '#E76F51'
+    color_2 = '#277DA1'
+
+    base_offset = 10
+    extra_offset = 8
+    threshold = 15
+
+    for angle, val1, val2 in zip(
+        angles[:-1], l_values[:-1], r_values[:-1]
+    ):
+        distance = abs(val1 - val2)
+
+        offset = base_offset + max(
+            0, extra_offset * (1 - distance / threshold)
+        )
+
+        # Direzione radiale
+        dx = np.cos(angle)
+        dy = np.sin(angle)
+
+        # Direzione tangenziale
+        tx = -np.sin(angle)
+        ty = np.cos(angle)
+
+        # Player 1: spostamento radiale + tangenziale
+        ax.annotate(
+            str(val1),
+            xy=(angle, val1),
+            xytext=(
+                dx * 4 + tx * offset,
+                dy * 4 + ty * offset
+            ),
+            textcoords='offset points',
+            color='white',
+            fontsize=9,
+            ha='center',
+            va='center',
+            bbox=dict(
+                boxstyle='round,pad=0.3',
+                facecolor=color_1,
+                edgecolor='none'
+            ),
+            zorder=10
+        )
+
+        # Player 2: spostamento opposto
+        ax.annotate(
+            str(val2),
+            xy=(angle, val2),
+            xytext=(
+                dx * 4 - tx * offset,
+                dy * 4 - ty * offset
+            ),
+            textcoords='offset points',
+            color='white',
+            fontsize=9,
+            ha='center',
+            va='center',
+            bbox=dict(
+                boxstyle='round,pad=0.3',
+                facecolor=color_2,
+                edgecolor='none'
+            ),
+            zorder=10
+        )
+
+
+
+    # Legenda e titolo
+    # plt.title('Player Comparison', color='white', size=15, pad=25)
+    # plt.legend(loc='upper right', bbox_to_anchor=(1.25, 1.1))
+    legend = ax.legend(
+        handles=[
+            plt.Line2D(
+                [0], [0],
+                color='#E76F51',
+                lw=3,
+                label=l_stats['player']
+            ),
+            plt.Line2D(
+                [0], [0],
+                color='#277DA1',
+                lw=3,
+                label=r_stats['player']
+            )
+        ],
+        loc='lower center',
+        bbox_to_anchor=(0.5, -0.25),
+        ncol=2,
+        frameon=False,
+        fontsize=10
+    )
+    for text in legend.get_texts():
+            text.set_color('white')
+
+    ax.patch.set_alpha(0)
+    ax.set_title(title, color='white')
+    # st.pyplot(fig, transparent=True)  
+    return ax 
+
+
+def player_radar_ax(ax, stats, title):
+
+    params = ['Defense', 'Creation', 'Possession', 'Shooting']
+
+    values = [
+        int(stats['defense']),
+        int(stats['creation']),
+        int(stats['possession']),
+        int(stats['shooting'])
+    ]
+
+    # Chiudiamo il radar
+    N = len(params)
+    angles = np.linspace(0, 2 * np.pi, N, endpoint=False).tolist()
+
+    values += values[:1]
+    angles += angles[:1]
+
+    color = '#E76F51'
+
+    # Radar
+    ax.plot(
+        angles, values,
+        linewidth=2,
+        color=color
+    )
+
+    ax.fill(
+        angles, values,
+        color=color,
+        alpha=0.15
+    )
+
+    # Etichette degli assi
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(
+        params,
+        color='white',
+        fontsize=11
+    )
+
+    # Scala 0-100
+    ax.set_ylim(0, 100)
+    ax.set_yticks([])
+    ax.set_yticklabels([])
+
+    ax.grid(alpha=0.3)
+    ax.spines['polar'].set_visible(False)
+    ax.tick_params(axis='x', pad=12)
+
+    # Etichette dei valori
+    for angle, value in zip(angles[:-1], values[:-1]):
+
+        # Spostamento radiale verso l'esterno
+        dx = np.cos(angle)
+        dy = np.sin(angle)
+
+        ax.annotate(
+            str(value),
+            xy=(angle, value),
+            xytext=(dx * 5, dy * 5),
+            textcoords='offset points',
+            color='white',
+            fontsize=9,
+            ha='center',
+            va='center',
+            bbox=dict(
+                boxstyle='round,pad=0.3',
+                facecolor=color,
+                edgecolor='none'
+            ),
+            zorder=10
+        )
+
+    # Titolo
+    ax.set_title(
+        title,
+        color='white',
+        fontsize=12,
+        pad=25
+    )
+
+    ax.patch.set_alpha(0)
+
+    return ax
+
+
+def plot_three_radars(player_stats, top10, df):
+    compare_1 = top10.loc[0]
+    compare_2 = top10.loc[1]
+    compare_3 = top10.loc[2]
+    title_player = f"{player_stats['player']} - {player_stats['team']}"
+    title_1 = f"{compare_1['player']} - {compare_1['team']}\n(Similarity: {compare_1['similarity']:.2f}%)"
+    title_2 = f"{compare_2['player']} - {compare_2['team']}\n(Similarity: {compare_2['similarity']:.2f}%)"
+    # st.write(title_1)
+    # st.write(player_stats)
+    stats_1 = compute_scores(df, compare_1)
+    stats_2 = compute_scores(df, compare_2)
+    stats_3 = compute_scores(df, compare_3)
+    # st.write(stats_1, stats_2, stats_3)
+    fig, axes = plt.subplots(
+        1, 3,
+        figsize=(15, 6),
+        subplot_kw=dict(polar=True)
+    )
+
+    fig.subplots_adjust(
+        wspace=0.55,
+        bottom=0.25,
+        top=0.85
+    )
+    player_radar_ax(axes[0], player_stats, title_player)
+    # compare_radars_ax(axes[0], player_stats, stats_1, title_1)
+    compare_radars_ax(axes[1], player_stats, stats_2, title_1)
+    compare_radars_ax(axes[2], player_stats, stats_3, title_2)
+    fig.patch.set_alpha(0)
+    st.pyplot(fig)
 
 
 
@@ -1398,7 +1824,7 @@ def show_43to7(df, player_team):
 
     
 
-    st.header(f"Most similar player (in the same position group): {r_player['player']} ({r_player['similarity']/100:.1%})")
+    # st.header(f"Most similar player (in the same position group): {r_player['player']} ({r_player['similarity']/100:.1%})")
     # st.write("Closer stats:")
 
     l_player_stats = compute_scores(df, l_player)
@@ -1409,12 +1835,16 @@ def show_43to7(df, player_team):
     # st.write(l_player_stats)
     # st.write(r_player_stats)
 
-    compare_radars(l_player_stats, r_player_stats)
+    # compare_radars(l_player_stats, r_player_stats)
 
     # compare_43to7(l_player=l_player, r_player=r_player, df_standard=df_standard, descriptions=descriptions)
-
     
     top10 = sim_df_pos.iloc[1:11].reset_index(drop=True)
+
+    # st.write(top10)
+
+    plot_three_radars(l_player_stats, top10, df)
+    
     st.subheader(f"Similarity Top 10 - {player_name}")
 
     col_left, col_right = st.columns(2)
