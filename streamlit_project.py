@@ -368,6 +368,7 @@ def show_heatmaps(player_team, filename='top5_2526', num_x_cells=30, num_y_cells
     # if player_name:
     player_name = str.split(player_team, ' - ')[0]
     team = str.split(player_team, ' - ')[1]
+    # st.write(df)
     row = df.loc[(df['player_name'].str.lower() == player_name.lower()) & (df['team'] == team)].iloc[0]
     # row = df.loc[df['player_name'].str.lower() == player_name.lower()].iloc[0]
     player_id = row['player_id']
@@ -1156,18 +1157,18 @@ def compare_radars(l_stats, r_stats):
         angles, r_values,
         linewidth=2,
         label='Player 1',
-        color='#277DA1' 
+        color='#EA580C' 
     )
-    ax.fill(angles, r_values, color='#277DA1', alpha=0.15)
+    ax.fill(angles, r_values, color='#EA580C', alpha=0.15)
 
     # Secondo giocatore
     ax.plot(
         angles, l_values,
         linewidth=2,
         label='Player 2',
-        color='#E76F51'
+        color='#2563EB'
     )
-    ax.fill(angles, l_values, color='#E76F51', alpha=0.15)
+    ax.fill(angles, l_values, color='#2563EB', alpha=0.15)
 
     # Etichette
     ax.set_xticks(angles[:-1])
@@ -1186,8 +1187,8 @@ def compare_radars(l_stats, r_stats):
     
     
 
-    color_1 = '#E76F51'
-    color_2 = '#277DA1'
+    color_1 = '#2563EB'
+    color_2 = '#EA580C'
 
     base_offset = 10
     extra_offset = 8
@@ -1261,13 +1262,13 @@ def compare_radars(l_stats, r_stats):
         handles=[
             plt.Line2D(
                 [0], [0],
-                color='#E76F51',
+                color='#2563EB',
                 lw=3,
                 label=l_stats['player']
             ),
             plt.Line2D(
                 [0], [0],
-                color='#277DA1',
+                color='#EA580C',
                 lw=3,
                 label=r_stats['player']
             )
@@ -1503,18 +1504,18 @@ def compare_radars_ax(ax, l_stats, r_stats, title):
         angles, r_values,
         linewidth=2,
         label='Player 1',
-        color='#277DA1' 
+        color='#EA580C' 
     )
-    ax.fill(angles, r_values, color='#277DA1', alpha=0.15)
+    ax.fill(angles, r_values, color='#EA580C', alpha=0.15)
 
     # Secondo giocatore
     ax.plot(
         angles, l_values,
         linewidth=2,
         label='Player 2',
-        color='#E76F51'
+        color='#2563EB'
     )
-    ax.fill(angles, l_values, color='#E76F51', alpha=0.15)
+    ax.fill(angles, l_values, color='#2563EB', alpha=0.15)
 
     # Etichette
     ax.set_xticks(angles[:-1])
@@ -1533,8 +1534,8 @@ def compare_radars_ax(ax, l_stats, r_stats, title):
     
     
 
-    color_1 = '#E76F51'
-    color_2 = '#277DA1'
+    color_1 = '#2563EB'
+    color_2 = '#EA580C'
 
     base_offset = 10
     extra_offset = 8
@@ -1608,13 +1609,13 @@ def compare_radars_ax(ax, l_stats, r_stats, title):
         handles=[
             plt.Line2D(
                 [0], [0],
-                color='#E76F51',
+                color='#2563EB',
                 lw=3,
                 label=l_stats['player']
             ),
             plt.Line2D(
                 [0], [0],
-                color='#277DA1',
+                color='#EA580C',
                 lw=3,
                 label=r_stats['player']
             )
@@ -1652,7 +1653,7 @@ def player_radar_ax(ax, stats, title):
     values += values[:1]
     angles += angles[:1]
 
-    color = '#E76F51'
+    color = '#2563EB'
 
     # Radar
     ax.plot(
